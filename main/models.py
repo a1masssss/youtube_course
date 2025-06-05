@@ -18,6 +18,7 @@ class Video(models.Model):
     thumbnail = models.URLField(null=True, blank=True)
     duration_sec = models.PositiveIntegerField(null=True, blank=True)
     duration_string = models.CharField(null=True, blank=True)
+    summary = models.TextField()
     full_transcript = models.TextField(null=True, blank=True)
     playlist = models.ForeignKey(
         Playlist,

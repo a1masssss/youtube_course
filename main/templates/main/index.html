@@ -1,0 +1,95 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Home - Course Summarizer{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'main/css/index.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">
+            <i class="fas fa-robot"></i>
+            AI Course Summarizer
+        </h1>
+        <p class="hero-subtitle">
+            Transform YouTube playlists into concise, AI-powered summaries
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="add-playlist-section">
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <i class="fab fa-youtube"></i>
+                    Add YouTube Playlist
+                </h2>
+                <p>Paste your YouTube playlist URL to get started</p>
+            </div>
+            
+            <div class="card-body">
+                <form id="playlist-form" class="playlist-form">
+                    <div class="input-group">
+                        <input 
+                            type="url" 
+                            id="playlist-url" 
+                            placeholder="https://www.youtube.com/playlist?list=..." 
+                            required
+                            class="url-input"
+                        >
+                        <button type="submit" class="submit-btn" id="submit-btn">
+                            <i class="fas fa-plus"></i>
+                            Add Playlist
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Processing playlist... This may take a few minutes.</p>
+                </div>
+                
+                <div id="error-message" class="error-message hidden"></div>
+                <div id="success-message" class="success-message hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="features-section">
+        <h2 class="section-title">Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-lightning-bolt"></i>
+                </div>
+                <h3>Lightning Fast</h3>
+                <p>AI-powered summarization in seconds</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>Smart Summaries</h3>
+                <p>Key points extracted automatically</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h3>Mobile Friendly</h3>
+                <p>Works perfectly on all devices</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'main/js/index.js' %}"></script>
+{% endblock %} 
