@@ -32,7 +32,8 @@ class PlaylistAPIView(APIView):
             playlist = Playlist.objects.create(
             playlist_id=playlist_info["id"],
             title=playlist_info["title"],
-            playlist_url=playlist_info["url"]
+            playlist_url=playlist_info["url"],
+            playlist_thumbnail=playlist_info["playlist_thumbnail"]
             )
 
             video_ids = [v["id"] for v in videos_info]
@@ -53,7 +54,6 @@ class PlaylistAPIView(APIView):
 
                 transcript = transcripts_by_id.get(v["id"], "")
                 
-                # Generate summary if transcript is available
                 summary = ""
                 if transcript and transcript.strip():
                     try:
@@ -95,6 +95,23 @@ class VideoDetailAPIView(APIView):
         video = get_object_or_404(Video, id=video_id)
         serializer = VideoSerializer(video)
         return Response(serializer.data)
+
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class MyCoursesAPIView(APIView):
+    def get(self, request):
+        playlists = Playlist.objects.all()
+        serializer = PlaylistSerializer(playlists, many=True)
+        return Response(serializer.data)
+    
+ 
+@method_decorator(csrf_exempt, name='dispatch')
+class MyCourseDeleteAPIView(APIView):
+    def delete(self, request, playlist_id):
+        playlist = get_object_or_404(Playlist, id=playlist_id)
+        playlist.delete()
+        return Response({"message": "Playlist deleted successfully"}, status=200)
 
 
 

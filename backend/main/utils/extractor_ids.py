@@ -5,11 +5,21 @@ def fetch_playlist_info(playlist_url: str):
     with yt_dlp.YoutubeDL(opts) as ydl:
         pl = ydl.extract_info(playlist_url, download=False)
 
+    # Try first video thumbnail
+    thumbnail = ""
+    if "entries" in pl and pl["entries"]:
+        first_video = pl["entries"][0]
+        if "id" in first_video:
+            thumbnail = f"https://img.youtube.com/vi/{first_video['id']}/maxresdefault.jpg"
+
     return {
         "id": pl.get("id"),
         "title": pl.get("title", "Без названия"),
-        "url": playlist_url
+        "url": playlist_url,
+        "playlist_thumbnail": thumbnail,
     }
+
+
 
 
 
@@ -43,4 +53,4 @@ def fetch_playlist_video_ids(playlist_url: str):
 
 
 if __name__ == '__main__':
-    print(fetch_playlist_videos("https://youtube.com/playlist?list=PLu71SKxNbfoDOf-6vAcKmazT92uLnWAgy&si=oKyXp9A8Qn5jAEVQ"))
+    print(fetch_playlist_info("https://youtube.com/playlist?list=PLu71SKxNbfoDOf-6vAcKmazT92uLnWAgy&si=oKyXp9A8Qn5jAEVQ"))

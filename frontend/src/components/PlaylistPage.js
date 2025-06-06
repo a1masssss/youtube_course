@@ -10,7 +10,6 @@ const PlaylistPage = () => {
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   useEffect(() => {
     const fetchPlaylist = async () => {
@@ -86,25 +85,9 @@ const PlaylistPage = () => {
   return (
     <div className="playlist-page">
       <div className="playlist-header">
-        <div className="header-top">
-          <button onClick={() => navigate('/')} className="back-button">
-            ← Back to Home
-          </button>
-          <div className="view-controls">
-            <button 
-              className={`view-button ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-            >
-              ⊞ Grid
-            </button>
-            <button 
-              className={`view-button ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              ☰ List
-            </button>
-          </div>
-        </div>
+        <button onClick={() => navigate('/')} className="back-button">
+          ← Back to Home
+        </button>
         
         <div className="playlist-info">
           <h2>{playlist?.title}</h2>
@@ -124,7 +107,7 @@ const PlaylistPage = () => {
         )}
       </div>
       
-      <div className={`videos-container ${viewMode}`}>
+      <div className="videos-grid">
         {playlist?.videos?.map((video) => (
           <VideoCard
             key={video.id}

@@ -5,6 +5,7 @@ class Playlist(models.Model):
     playlist_id = models.CharField(max_length=100)
     title = models.CharField(max_length=255)
     playlist_url = models.URLField()
+    playlist_thumbnail = models.URLField(null=True, blank=True)
     
 
     def __str__(self):

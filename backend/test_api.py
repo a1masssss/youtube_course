@@ -1,6 +1,11 @@
 from main.utils.transcript_fetch import extract_full_transcript, fetch_youtube_data
-result = fetch_youtube_data(["Sd6F2pfKJmk", "Lxa8poQYRtc"])
+from main.utils.summarizer import summarize_transcript
+result = fetch_youtube_data(["Sd6F2pfKJmk"])
 
 
-print(extract_full_transcript(result))
+full_trans = extract_full_transcript(result)
 
+
+print(full_trans)
+print('#'*10)
+print(summarize_transcript(full_trans))
