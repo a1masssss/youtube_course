@@ -39,22 +39,35 @@ class PlaylistAPIView(APIView):
             video_ids = [v["id"] for v in videos_info]
             
             transcript_data = fetch_youtube_data(video_ids)
-            
 
+            # Extract both full transcripts and timecode transcripts by video ID
             transcripts_by_id = {}
+            timecodes_by_id = {}
+            
             if transcript_data:
                 for video_transcript in transcript_data:
                     video_id = video_transcript.get('id')
                     if video_id:
-
+                        # Extract full transcript (plain text)
                         single_video_transcript = extract_full_transcript([video_transcript])
                         transcripts_by_id[video_id] = single_video_transcript
+                        
+                        # Extract timecode transcript (JSON with timestamps)
+                        try:
+                            if 'tracks' in video_transcript and len(video_transcript['tracks']) > 0:
+                                timecode_transcript = video_transcript['tracks'][0]['transcript']
+                                timecodes_by_id[video_id] = timecode_transcript
+                            else:
+                                timecodes_by_id[video_id] = None
+                        except (KeyError, IndexError) as e:
+                            print(f"❌ Error extracting timecode for video {video_id}: {str(e)}")
+                            timecodes_by_id[video_id] = None
 
             for v in videos_info:
-
                 transcript = transcripts_by_id.get(v["id"], "")
-                
+                timecode = timecodes_by_id.get(v["id"], None)  # Get timecode for THIS specific video
                 summary = ""
+                
                 if transcript and transcript.strip():
                     try:
                         summary = summarize_transcript(transcript)
@@ -70,7 +83,8 @@ class PlaylistAPIView(APIView):
                     thumbnail=v["thumbnail"],
                     full_transcript=transcript,
                     summary=summary,
-                    playlist=playlist
+                    playlist=playlist,
+                    timecode_transcript=timecode,  # This will be JSON with timestamps for each video
                 )
 
             serializer = PlaylistSerializer(playlist)

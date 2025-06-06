@@ -40,16 +40,6 @@ def fetch_playlist_videos(playlist_url: str):
 
 
 
-def fetch_playlist_video_ids(playlist_url: str):
-    opts = {
-        "quiet": True,
-        "extract_flat": True,
-        "skip_download": True,
-        "no_warnings": True
-    }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        pl = ydl.extract_info(playlist_url, download=False)
-    return [v["id"] for v in pl.get("entries", []) if v]
 
 
 if __name__ == '__main__':

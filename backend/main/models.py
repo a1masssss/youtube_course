@@ -21,6 +21,7 @@ class Video(models.Model):
     duration_string = models.CharField(null=True, blank=True)
     summary = models.TextField()
     full_transcript = models.TextField(null=True, blank=True)
+    timecode_transcript = models.JSONField(null=True, blank=True)
     playlist = models.ForeignKey(
         Playlist,
         related_name="videos",

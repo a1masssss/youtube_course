@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 import './MyCoursesPage.css';
 
 const MyCoursesPage = () => {
@@ -12,12 +13,12 @@ const MyCoursesPage = () => {
   useEffect(() => {
     const fetchPlaylists = async () => {
       try {
-        const response = await axios.get('http://localhost:8001/api/my-courses/');
+        const response = await axios.get(API_ENDPOINTS.MY_COURSES);
         setPlaylists(response.data);
         console.log('📚 Fetched courses:', response.data);
       } catch (err) {
         setError('Failed to load courses');
-        console.error('Error fetching courses:', err);
+        console.error('Error:', err);
       } finally {
         setLoading(false);
       }

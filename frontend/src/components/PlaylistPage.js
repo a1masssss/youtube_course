@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import VideoCard from './VideoCard';
+import { getPlaylistUrl } from '../config/api';
 import './PlaylistPage.css';
 
 const PlaylistPage = () => {
@@ -14,7 +15,7 @@ const PlaylistPage = () => {
   useEffect(() => {
     const fetchPlaylist = async () => {
       try {
-        const response = await axios.get(`http://localhost:8001/api/playlists/${playlistId}/`);
+        const response = await axios.get(getPlaylistUrl(playlistId));
         setPlaylist(response.data);
       } catch (err) {
         setError('Failed to load playlist');

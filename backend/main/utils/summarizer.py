@@ -51,18 +51,4 @@ def summarize_transcript(transcript_text, max_words=1200, prompt=prompt):
             'summary': ''
         }
 
-# def summarize_multiple_transcripts(transcripts: list) -> dict:
-#     summaries = {}
-    
-#     for item in transcripts:
-#         video_id = item.get('id')
-#         transcript = item.get('transcript', '')
-        
-#         if video_id and transcript:
-#             result = summarize_transcript(transcript)
-#             summaries[video_id] = result['summary'] if result['success'] else f"Error: {result.get('error', 'Unknown error')}"
-#         else:
-#             summaries[video_id] = "No transcript available to summarize."
-    
-#     return summaries
         

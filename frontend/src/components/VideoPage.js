@@ -6,6 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { getVideoUrl } from '../config/api';
 import 'katex/dist/katex.min.css';
 import './VideoPage.css';
 
@@ -20,7 +21,7 @@ const VideoPage = () => {
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const response = await axios.get(`http://localhost:8001/api/videos/${videoId}/`);
+        const response = await axios.get(getVideoUrl(videoId));
         setVideo(response.data);
       } catch (err) {
         setError('Failed to load video');

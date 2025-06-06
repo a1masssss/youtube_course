@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_ENDPOINTS } from '../config/api';
 import './HomePage.css';
 
 const HomePage = () => {
@@ -20,7 +21,7 @@ const HomePage = () => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:8001/api/playlists/', {
+      const response = await axios.post(API_ENDPOINTS.PLAYLISTS, {
         url: playlistUrl
       });
       
