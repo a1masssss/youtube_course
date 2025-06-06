@@ -1,5 +1,7 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+console.log(API_BASE_URL);
+
 
 // API Endpoints
 export const API_ENDPOINTS = {
