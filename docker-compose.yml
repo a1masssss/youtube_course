@@ -3,7 +3,7 @@ version: '3.8'
 services:
   db:
     image: postgres:14
-    environment:
+      container_name: coursiva_prod_db
       POSTGRES_USER: secret
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: secret
