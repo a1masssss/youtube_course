@@ -9,5 +9,6 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('refresh/', views.RefreshTokenView.as_view(), name='refresh'),
     path('profile/', views.UserProfileView.as_view(), name='profile'),
+    path('user/', views.UserProfileView.as_view(), name='user'),  # Alias for frontend
     path('callback/', views.GoogleOAuthCallbackView.as_view(), name='oauth_api_callback'),
 ]

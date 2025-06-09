@@ -19,6 +19,7 @@ import json
 from urllib.parse import urlencode
 import logging
 from rest_framework.authentication import SessionAuthentication
+import os
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -182,26 +183,21 @@ class GoogleOAuthCallbackView(APIView):
     """
     API endpoint to get JWT tokens after OAuth login
     """
-    authentication_classes = [SessionAuthentication]
-    permission_classes = [AllowAny]
-    
     def get(self, request):
         try:
-            # Debug logging
-            logger.info(f"OAuth callback - User authenticated: {request.user.is_authenticated}")
-            logger.info(f"OAuth callback - User: {request.user}")
-            logger.info(f"OAuth callback - Session key: {request.session.session_key}")
-            
-            # Check if user is authenticated (via session after OAuth)
+            # Check if user is authenticated via session (after OAuth)
             if request.user.is_authenticated:
+                logger.info(f"✅ User is authenticated: {request.user.email}")
+                
                 # Generate JWT tokens for the user
                 refresh = RefreshToken.for_user(request.user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
                 
+                # Return tokens and user info
                 return Response({
-                    'tokens': {
-                        'refresh': str(refresh),
-                        'access': str(refresh.access_token),
-                    },
+                    'access_token': access_token,
+                    'refresh_token': refresh_token,
                     'user': {
                         'id': request.user.id,
                         'email': request.user.email,
@@ -210,11 +206,16 @@ class GoogleOAuthCallbackView(APIView):
                     }
                 }, status=200)
             else:
-                logger.warning("OAuth callback - User not authenticated")
                 return Response({'error': 'User not authenticated'}, status=401)
+                
         except Exception as e:
-            logger.error(f"OAuth callback error: {str(e)}")
-            return Response({'error': 'Authentication failed'}, status=500)
+            logger.error(f"❌ OAuth callback error: {str(e)}")
+            # Always redirect to React - let React handle the token retrieval
+            # Add a parameter to prevent infinite loops
+            frontend_url = os.getenv('FRONTEND_URL')
+            redirect_url = f'{frontend_url}/auth/callback/?from_django=true'
+            logger.info(f"Redirecting to: {redirect_url}")
+            return HttpResponseRedirect(redirect_url)
 
 class OAuthRedirectView(APIView):
     """
@@ -224,20 +225,35 @@ class OAuthRedirectView(APIView):
     permission_classes = [AllowAny]
     
     def get(self, request):
-        # Debug logging
-        logger.info(f"OAuth redirect - User authenticated: {request.user.is_authenticated}")
-        logger.info(f"OAuth redirect - User: {request.user}")
-        
         # Check if this is already a redirect to prevent infinite loops
         if request.GET.get('redirected'):
-            logger.warning("Already redirected, preventing infinite loop")
             return Response({'error': 'Redirect loop detected'}, status=400)
         
-        # Always redirect to React - let React handle the token retrieval
-        # Add a parameter to prevent infinite loops
-        redirect_url = 'http://localhost:3000/auth/callback/?from_django=true'
-        logger.info(f"Redirecting to: {redirect_url}")
-        return HttpResponseRedirect(redirect_url)
+        frontend_url = os.getenv('FRONTEND_URL')
+        
+        # If user is authenticated, generate tokens and redirect with them
+        if request.user.is_authenticated:
+            try:
+                logger.info(f"✅ User is authenticated: {request.user.email}")
+                
+                # Generate JWT tokens for the user
+                refresh = RefreshToken.for_user(request.user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+                
+                # Redirect to React with tokens in URL parameters
+                redirect_url = f'{frontend_url}/auth/callback/?access_token={access_token}&refresh_token={refresh_token}'
+                return HttpResponseRedirect(redirect_url)
+                
+            except Exception as e:
+                logger.error(f"❌ Error generating tokens: {str(e)}")
+                # Redirect with error
+                redirect_url = f'{frontend_url}/login?error=token_generation_failed'
+                return HttpResponseRedirect(redirect_url)
+        else:
+            # Redirect with error
+            redirect_url = f'{frontend_url}/login?error=oauth_failed'
+            return HttpResponseRedirect(redirect_url)
 
 
 

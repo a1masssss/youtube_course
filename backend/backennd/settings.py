@@ -160,14 +160,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Environment URLs
+FRONTEND_URL = os.getenv('FRONTEND_URL')
+BACKEND_URL = os.getenv('BACKEND_URL')
+
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8001",
-    "http://127.0.0.1:8001",
-    "http://164.90.185.179:8001",
-    "http://164.90.185.179:3000"
+    FRONTEND_URL,
+    BACKEND_URL,
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -255,8 +255,8 @@ SOCIALACCOUNT_ADAPTER = 'users.adapters.CustomSocialAccountAdapter'
 SOCIALACCOUNT_LOGIN_ON_GET = True  # Skip intermediate page, go directly to Google
 
 # Custom redirect URLs for OAuth (React-based)
-LOGIN_REDIRECT_URL = "/oauth/success/"
-LOGOUT_REDIRECT_URL = "http://localhost:3000/"
+LOGIN_REDIRECT_URL = "/oauth/success/"  # This will hit our OAuthRedirectView
+LOGOUT_REDIRECT_URL = f"{FRONTEND_URL}/"
 
 
 
@@ -274,6 +274,6 @@ SESSION_COOKIE_AGE = 3600  # 1 hour
 # CSRF settings for OAuth
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    FRONTEND_URL,
+    BACKEND_URL,
 ]

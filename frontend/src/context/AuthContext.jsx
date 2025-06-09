@@ -66,6 +66,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithTokens = (userData, accessToken, refreshToken) => {
+    // Store tokens
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+    
+    // Set user data
+    setUser(userData);
+  };
+
   const logout = async () => {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
@@ -109,6 +118,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
+    loginWithTokens,
     logout,
     refreshToken,
     fetchUserProfile,

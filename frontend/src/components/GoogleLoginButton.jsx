@@ -4,7 +4,8 @@ import './GoogleLoginButton.css';
 const GoogleLoginButton = ({ text = "Continue with Google" }) => {
   const handleGoogleLogin = () => {
     // Redirect to Django backend Google OAuth endpoint (directly to Google)
-    window.location.href = 'http://localhost:8001/accounts/google/login/';
+    const backendUrl = process.env.REACT_APP_API_BASE_URL?.replace('/api', '');
+    window.location.href = `${backendUrl}/accounts/google/login/`;
   };
 
   return (
