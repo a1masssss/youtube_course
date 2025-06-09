@@ -16,8 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from users.views import OAuthRedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('main.urls')),
+    path('api/auth/', include('users.urls')),
+    path('accounts/', include('allauth.urls')),
+    path('oauth/success/', OAuthRedirectView.as_view(), name='oauth_success'),
+    path('auth/callback/', OAuthRedirectView.as_view(), name='oauth_callback'),
 ]

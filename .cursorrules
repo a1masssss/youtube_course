@@ -1,0 +1,143 @@
+# Cursor Rules for Django + React Course Platform
+
+## Project Structure
+This is a full-stack application with:
+- **Backend**: Django REST API (Python) in `/backend/` directory - runs on port **8001**
+- **Frontend**: React.js application in `/frontend/` directory - runs on port **3000**
+- **Database**: PostgreSQL with Django ORM models
+- **Authentication**: JWT tokens via django-rest-framework-simplejwt
+
+## Port Configuration
+- **Backend Django**: Always use port **8001** (`python manage.py runserver 8001`)
+- **Frontend React**: Always use port **3000** (`npm start` - default React port)
+- **API Base URL**: `http://localhost:8001/api` for all frontend requests
+
+## Code Style & Standards
+
+### Python/Django Backend
+- Use Python 3.11+ syntax and features
+- Follow PEP 8 style guidelines
+- Use Django REST Framework for API endpoints
+- Always include proper error handling and status codes
+- Use class-based views (APIView) for consistency
+- Include authentication and permissions on protected endpoints
+- Use UUID fields for primary keys where applicable
+- Write descriptive docstrings for all methods
+
+### JavaScript/React Frontend
+- Use modern React with hooks (useState, useEffect, useCallback, useMemo)
+- Prefer functional components over class components
+- Use async/await for API calls instead of .then()
+- Include proper error handling for all API requests
+- Use meaningful variable and function names
+- Add loading states for async operations
+- Include proper TypeScript-style JSDoc comments
+
+### API Integration
+- All API endpoints should use consistent base URL: `http://localhost:8001/api`
+- Include Authorization headers with JWT tokens
+- Handle 401 (unauthorized) and 404 (not found) responses appropriately
+- Use proper HTTP methods (GET, POST, PUT, DELETE)
+- Include proper Content-Type headers for JSON requests
+
+## File Naming Conventions
+- React components: PascalCase (e.g., `VideoPage.js`, `MindMap.js`)
+- Python files: snake_case (e.g., `views.py`, `models.py`)
+- CSS files: kebab-case matching component names (e.g., `video-page.css`)
+- Utility functions: snake_case for Python, camelCase for JavaScript
+
+## Common Patterns
+
+### Django Views
+```python
+class ExampleAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            # Implementation
+            return Response(data, status=200)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+```
+
+### React API Calls
+```javascript
+const fetchData = async () => {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/endpoint/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            setData(data);
+        } else {
+            setError('Failed to fetch data');
+        }
+    } catch (error) {
+        setError(error.message);
+    }
+};
+```
+
+## Dependencies & Libraries
+- **Backend**: Django, DjangoRESTFramework, django-cors-headers, psycopg2
+- **Frontend**: React, ReactFlow, react-markdown, react-syntax-highlighter
+- **AI Integration**: Groq API for content generation
+
+## Environment Variables
+- Backend uses `.env` file in `/backend/` directory
+- Frontend uses `REACT_APP_` prefixed environment variables
+- Set `REACT_APP_API_BASE_URL=http://localhost:8001/api` in frontend `.env` if needed
+- Never commit sensitive keys or tokens
+
+## Database Models
+- Use UUID primary keys for user-facing models
+- Include created_at/updated_at timestamps
+- Use proper foreign key relationships
+- Add unique constraints where appropriate
+
+## Error Handling
+- Always include try-catch blocks for async operations
+- Provide meaningful error messages to users
+- Log errors appropriately for debugging
+- Use proper HTTP status codes in API responses
+
+## Security
+- Always validate user permissions before data access
+- Use JWT authentication for protected endpoints
+- Sanitize user inputs
+- Include CORS headers for cross-origin requests
+
+## Performance
+- Use React.memo() for expensive components
+- Implement proper loading states
+- Use useMemo() and useCallback() for optimization
+- Minimize API calls with proper caching
+
+## Testing
+- Write unit tests for utility functions
+- Test API endpoints with proper authentication
+- Include error case testing
+- Test React components with proper mocking
+
+## Git Workflow
+- Use descriptive commit messages
+- Create feature branches for new functionality
+- Include both frontend and backend changes in related commits
+- Test thoroughly before committing
+
+## Common Issues to Avoid
+- **IMPORTANT**: Always use port 8001 for Django backend (not 8000!)
+- Frontend React runs on port 3000 (default)
+- Always handle loading and error states in React
+- Include proper authentication headers in API calls
+- Use proper React Flow node types to avoid edge creation errors
+- Handle CORS issues with proper Django settings
+- Never mix ports - backend=8001, frontend=3000 

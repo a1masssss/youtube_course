@@ -2,11 +2,6 @@ import React from 'react';
 import './VideoCard.css';
 
 const VideoCard = ({ video, onClick }) => {
-  const truncateText = (text, maxLength = 100) => {
-    if (!text) return '';
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-  };
-
   const formatDuration = (seconds) => {
     if (!seconds) return '';
     const hours = Math.floor(seconds / 3600);
@@ -34,30 +29,10 @@ const VideoCard = ({ video, onClick }) => {
             {formatDuration(video.duration)}
           </div>
         )}
-        <div className="play-overlay">
-          <div className="play-icon">▶</div>
-        </div>
       </div>
       
       <div className="video-info">
         <h3 className="video-title">{video.title}</h3>
-        
-        {video.summary && (
-          <div className="video-summary">
-            <p>{truncateText(video.summary, 120)}</p>
-          </div>
-        )}
-        
-        <div className="video-status">
-          <div className="status-indicators">
-            {video.full_transcript && (
-              <span className="status-badge transcript">📝 Transcript</span>
-            )}
-            {video.summary && (
-              <span className="status-badge summary">📄 Summary</span>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

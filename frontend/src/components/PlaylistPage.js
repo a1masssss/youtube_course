@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { apiClient, API_ENDPOINTS } from '../config/api';
 import VideoCard from './VideoCard';
-import { getPlaylistUrl } from '../config/api';
 import './PlaylistPage.css';
 
 const PlaylistPage = () => {
-  const { playlistId } = useParams();
+  const { playlistUuid } = useParams();
   const navigate = useNavigate();
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,21 +14,23 @@ const PlaylistPage = () => {
   useEffect(() => {
     const fetchPlaylist = async () => {
       try {
-        const response = await axios.get(getPlaylistUrl(playlistId));
+        const response = await apiClient.get(API_ENDPOINTS.getPlaylist(playlistUuid));
         setPlaylist(response.data);
-      } catch (err) {
+      } catch (error) {
+        console.error('Error fetching playlist:', error);
         setError('Failed to load playlist');
-        console.error('Error:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPlaylist();
-  }, [playlistId]);
+    if (playlistUuid) {
+      fetchPlaylist();
+    }
+  }, [playlistUuid]);
 
-  const handleVideoClick = (videoId) => {
-    navigate(`/${playlistId}/${videoId}`);
+  const handleVideoClick = (videoUuid) => {
+    navigate(`/${playlistUuid}/${videoUuid}`);
   };
 
   const getProcessingStats = () => {
@@ -42,24 +43,6 @@ const PlaylistPage = () => {
     return { total, withTranscript, withSummary };
   };
 
-  const exportSummaries = () => {
-    if (!playlist?.videos) return;
-    
-    const summaries = playlist.videos
-      .filter(v => v.summary)
-      .map(v => `${v.title}\n${'='.repeat(v.title.length)}\n\n${v.summary}\n\n`)
-      .join('');
-    
-    const blob = new Blob([summaries], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${playlist.title}_summaries.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   if (loading) {
     return (
@@ -98,22 +81,14 @@ const PlaylistPage = () => {
             <span className="stat-item">📄 {stats.withSummary} summaries</span>
           </div>
         </div>
-
-        {stats.withSummary > 0 && (
-          <div className="playlist-actions">
-            <button onClick={exportSummaries} className="export-button">
-              📥 Export All Summaries
-            </button>
-          </div>
-        )}
       </div>
       
       <div className="videos-grid">
         {playlist?.videos?.map((video) => (
           <VideoCard
-            key={video.id}
+            key={video.uuid_video}
             video={video}
-            onClick={() => handleVideoClick(video.id)}
+            onClick={() => handleVideoClick(video.uuid_video)}
           />
         ))}
       </div>

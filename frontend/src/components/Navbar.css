@@ -1,5 +1,5 @@
 .navbar {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: #0A0A1B;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0;
   position: sticky;
@@ -18,32 +18,24 @@
   height: 70px;
 }
 
-/* Brand Section */
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  color: white;
-}
-
-.brand-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.brand-icon .icon {
-  font-size: 1.5rem;
-}
-
 .brand-info {
   display: flex;
   flex-direction: column;
+}
+
+.brand-link {
+  text-decoration: none;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.brand-link:hover {
+  transform: translateY(-1px);
+}
+
+.brand-link:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .brand-title {
@@ -54,13 +46,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.brand-subtitle {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0;
-  font-weight: 400;
 }
 
 /* Navigation Links */
@@ -93,12 +78,6 @@
   border: 1px solid rgba(102, 126, 234, 0.3);
 }
 
-.nav-link.disabled {
-  color: rgba(255, 255, 255, 0.4);
-  cursor: not-allowed;
-  position: relative;
-}
-
 .nav-link.disabled::after {
   content: 'Soon';
   position: absolute;
@@ -110,6 +89,114 @@
   padding: 2px 6px;
   border-radius: 10px;
   font-weight: 600;
+}
+
+/* Navigation Button (for unauthenticated users) */
+.nav-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Authentication Section */
+.navbar-auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-loading {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.auth-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-greeting {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.logout-button {
+  background: none;
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.login-button {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+  position: relative;
+}
+
+.login-button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.signup-button {
+  background: none;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: none;
+  position: relative;
+}
+
+.signup-button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
 }
 
 /* Actions Section */
@@ -178,8 +265,12 @@
     justify-content: center;
   }
   
-  .navbar-actions {
+  .navbar-auth {
     align-self: flex-end;
+  }
+  
+  .user-greeting {
+    display: none;
   }
 }
 
@@ -195,5 +286,16 @@
   
   .navbar-nav {
     gap: 0.5rem;
+  }
+  
+  .auth-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .login-button,
+  .signup-button {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
   }
 } 

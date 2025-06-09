@@ -47,6 +47,8 @@ body {
 
 main {
   flex: 1;
+  min-height: calc(100vh - 70px);
+  background: #0A0A1B;
 }
 
 /* Global Typography */

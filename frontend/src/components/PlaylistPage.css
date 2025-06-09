@@ -1,7 +1,10 @@
 .playlist-page {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
+  margin: 0;
   padding: 20px;
+  background: #0A0A1B;
+  min-height: 100vh;
 }
 
 .playlist-header {
@@ -10,7 +13,7 @@
   justify-content: space-between;
   margin-bottom: 30px;
   padding: 20px;
-  background: white;
+  background: #0A0A1B;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   flex-wrap: wrap;
@@ -45,7 +48,7 @@
 
 .playlist-info h2 {
   margin: 0 0 10px 0;
-  color: #333;
+  color: white;
   font-size: 24px;
   font-weight: 600;
 }
@@ -57,37 +60,18 @@
 }
 
 .stat-item {
-  background: #f8f9fa;
+  background: rgba(255, 255, 255, 0.1);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .playlist-actions {
   display: flex;
   gap: 10px;
-}
-
-.export-button {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.export-button:hover {
-  background: #218838;
-  transform: translateY(-1px);
 }
 
 .videos-grid {
@@ -142,10 +126,11 @@
 .no-videos {
   text-align: center;
   padding: 60px 20px;
-  color: #666;
-  background: white;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .no-videos p {

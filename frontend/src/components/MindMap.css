@@ -1,0 +1,340 @@
+.mindmap-container {
+  width: 100%;
+  height: 600px;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafbfc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mindmap-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  text-align: center;
+}
+
+.mindmap-header h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.mindmap-header p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.mindmap-flow {
+  height: calc(100% - 80px);
+  background: #ffffff;
+}
+
+.mindmap-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: #666;
+  font-size: 1.1rem;
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+}
+
+/* Custom Node Styles */
+.mindmap-root-node {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 3px solid #5a6fd8;
+  border-radius: 20px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  min-width: 220px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.mindmap-root-node:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+  border-color: #4c63d2;
+}
+
+.mindmap-root-node .node-title {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mindmap-root-node .node-label {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.mindmap-root-node .node-indicator {
+  font-size: 12px;
+  opacity: 0.8;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.mindmap-category-node {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: 3px solid #38a169;
+  border-radius: 15px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+  min-width: 160px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.mindmap-category-node:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(72, 187, 120, 0.5);
+  border-color: #2f855a;
+}
+
+.mindmap-category-node .node-indicator {
+  font-size: 11px;
+  opacity: 0.8;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 3px 6px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+
+.mindmap-category-node .node-label {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.mindmap-subtopic-node {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  color: white;
+  border: 2px solid #dd6b20;
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.4);
+  min-width: 140px;
+  max-width: 220px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.mindmap-subtopic-node:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(237, 137, 54, 0.5);
+  border-color: #c05621;
+}
+
+.mindmap-subtopic-node .node-indicator {
+  font-size: 10px;
+  opacity: 0.8;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 5px;
+  border-radius: 8px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.mindmap-subtopic-node .node-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.mindmap-subtopic-node .node-description {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.9;
+  line-height: 1.4;
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* React Flow Customizations */
+.react-flow__controls {
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__controls-button {
+  background: white;
+  border: none;
+  border-bottom: 1px solid #e1e5e9;
+  color: #667eea;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.react-flow__controls-button:hover {
+  background: #f7fafc;
+  color: #5a6fd8;
+}
+
+.react-flow__minimap {
+  background: white;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced React Flow Edge Styling */
+.react-flow__edge {
+  pointer-events: all;
+  transition: all 0.3s ease;
+}
+
+.react-flow__edge-path {
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  transition: all 0.3s ease;
+}
+
+.react-flow__edge.animated path {
+  stroke-dasharray: 12 8;
+  animation: dashdraw 3s linear infinite;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 6;
+  filter: brightness(1.3) drop-shadow(0 0 8px currentColor);
+}
+
+.react-flow__edge:hover .react-flow__edge-text {
+  font-size: 18px !important;
+  font-weight: bold !important;
+}
+
+/* Enhanced Marker styling */
+.react-flow__arrowhead {
+  fill: currentColor;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* Edge text styling */
+.react-flow__edge-textwrapper {
+  pointer-events: none;
+}
+
+.react-flow__edge-text {
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced animation */
+@keyframes dashdraw {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Pulse animation for connections */
+@keyframes connectionPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.react-flow__edge.animated {
+  animation: connectionPulse 2s ease-in-out infinite;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .mindmap-container {
+    height: 500px;
+  }
+
+  .mindmap-header {
+    padding: 0.8rem 1rem;
+  }
+
+  .mindmap-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .mindmap-header p {
+    font-size: 0.8rem;
+  }
+
+  .mindmap-root-node {
+    min-width: 180px;
+    padding: 16px;
+  }
+
+  .mindmap-root-node .node-label {
+    font-size: 16px;
+  }
+
+  .mindmap-category-node {
+    min-width: 140px;
+    padding: 12px;
+  }
+
+  .mindmap-category-node .node-label {
+    font-size: 14px;
+  }
+
+  .mindmap-subtopic-node {
+    min-width: 120px;
+    padding: 10px;
+  }
+
+  .mindmap-subtopic-node .node-label {
+    font-size: 12px;
+  }
+
+  .mindmap-subtopic-node .node-description {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mindmap-container {
+    height: 450px;
+  }
+
+  .mindmap-flow {
+    height: calc(100% - 70px);
+  }
+} 
