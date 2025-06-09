@@ -74,14 +74,6 @@ const MyCoursesPage = () => {
     <div className="my-courses-page">
       <div className="page-header">
         <h1>My Courses</h1>
-        {playlists.length > 0 && (
-          <div className="courses-summary">
-            <span className="summary-item">📚 {playlists.length} courses</span>
-            <span className="summary-item">
-              🎯 {playlists.reduce((acc, p) => acc + (p.videos?.length || 0), 0)} total videos
-            </span>
-          </div>
-        )}
       </div>
 
       {playlists.length === 0 ? (

@@ -95,7 +95,7 @@ const VideoPage = () => {
     try {
       const token = localStorage.getItem('access_token');
       
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/summary-chatbot/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL }/summary-chatbot/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ const VideoPage = () => {
     
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/flashcards/?video_uuid=${video.uuid_video}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL }/flashcards/?video_uuid=${video.uuid_video}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         }
@@ -226,7 +226,7 @@ const VideoPage = () => {
     
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/flashcards/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL }/flashcards/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -291,7 +291,7 @@ const VideoPage = () => {
       const token = localStorage.getItem('access_token');
       
       // First, try to get existing mindmap
-      const getResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/mindmap/?video_uuid=${video.uuid_video}`, {
+      const getResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL }/mindmap/?video_uuid=${video.uuid_video}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -310,7 +310,7 @@ const VideoPage = () => {
       if (getResponse.status === 404) {
         setMindmapLoadingMessage('Generating new mindmap...');
         
-        const postResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api'}/mindmap/`, {
+        const postResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL }/mindmap/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -380,15 +380,6 @@ const VideoPage = () => {
     }
     
     return '';
-  };
-
-  const copyToClipboard = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
   };
 
   // Format time for display
@@ -518,16 +509,6 @@ const VideoPage = () => {
               <div className="summary-section">
                 {video?.summary ? (
                   <div className="summary-content">
-                    <div className="content-header">
-                      <h2>Video Summary</h2>
-                      <button 
-                        className="copy-button"
-                        onClick={() => copyToClipboard(video.summary)}
-                        title="Copy summary"
-                      >
-                        📋 Copy
-                      </button>
-                    </div>
                     <div className="summary-text">
                       <ReactMarkdown
                         remarkPlugins={[remarkMath]}
@@ -569,20 +550,6 @@ const VideoPage = () => {
               <div className="transcript-section">
                 {video?.timecode_transcript && video.timecode_transcript.length > 0 ? (
                   <div className="transcript-content">
-                    <div className="content-header">
-                      <h2>Transcript with Timecodes</h2>
-                      <button 
-                        className="copy-button"
-                        onClick={() => copyToClipboard(
-                          video.timecode_transcript.map(item => 
-                            `[${Math.floor(item.start / 60)}:${(item.start % 60).toFixed(0).padStart(2, '0')}] ${item.text}`
-                          ).join('\n')
-                        )}
-                        title="Copy transcript"
-                      >
-                        📋 Copy
-                      </button>
-                    </div>
                     <div className="transcript-text timecode-transcript">
                       {video.timecode_transcript.map((item, index) => {
                         const nextItem = video.timecode_transcript[index + 1];
@@ -626,6 +593,7 @@ const VideoPage = () => {
                       {chatMessages.length === 0 ? (
                         <div className="chat-welcome">
                           <div className="welcome-message">
+                            <h3>Welcome to the AI Chat</h3> 
                           </div>
                         </div>
                       ) : (

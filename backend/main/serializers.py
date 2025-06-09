@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from rest_framework import serializers
-from main.models import Flashcard, MindMap, Playlist, Video
+from main.models import Flashcard, MindMap, Playlist, Video, Quiz
 
 
 class PlaylistSerializer(serializers.ModelSerializer):
@@ -35,6 +35,12 @@ class FlashcardSerializer(serializers.ModelSerializer):
 class MindMapSerializer(serializers.ModelSerializer):
     class Meta:
         model = MindMap
+        fields = '__all__'
+
+
+class QuizSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quiz
         fields = '__all__'
 
 

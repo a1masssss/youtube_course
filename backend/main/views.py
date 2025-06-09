@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
-from django.http import StreamingHttpResponse
+from django.http import Http404, StreamingHttpResponse
 
 from main.utils.summary_chatbot import summary_chatbot
 
@@ -265,6 +265,8 @@ class GenerateFlashCardsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    from django.http import Http404
+
     def get(self, request):
         uuid_video = request.query_params.get("video_uuid")
         
@@ -272,18 +274,18 @@ class GenerateFlashCardsView(APIView):
             return Response({"error": "video_uuid query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Временно убираем фильтрацию по пользователю для тестирования
             video = get_object_or_404(Video, uuid_video=uuid_video)
             flashcard = get_object_or_404(Flashcard, flashcard_video=video)
-            
+
             return Response({
                 "flashcards": flashcard.flashcards_json,
                 "uuid_flashcard": flashcard.uuid_flashcard,
                 "video_title": video.title
             }, status=200)
-                
-        except (Video.DoesNotExist, Flashcard.DoesNotExist):
-                return Response({"error": "Flashcards not found for this video"},  status=status.HTTP_400_BAD_REQUEST)
+
+        except Http404 as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

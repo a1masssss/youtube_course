@@ -1,14 +1,14 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 console.log('Environment variable REACT_APP_API_BASE_URL:', process.env.REACT_APP_API_BASE_URL);
 console.log('Using API_BASE_URL:', API_BASE_URL);
 
 // Create axios instance
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 300000, // 5 minutes timeout for long-running operations like playlist processing
 });
 
 // Request interceptor to add auth token

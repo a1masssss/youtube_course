@@ -17,6 +17,8 @@ const Navbar = () => {
     navigate('/');
   };
 
+
+
   // Don't show navbar on login/signup pages
   if (location.pathname === '/login' || location.pathname === '/signup') {
     return null;

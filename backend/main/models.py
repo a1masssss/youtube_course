@@ -93,5 +93,27 @@ class MindMap(models.Model):
 
     def __str__(self):
         return f"{self.mindmap_json[:50]} - {self.user.email}"
+
+
+class Quiz(models.Model):
+    quiz_json = models.JSONField()
+    uuid_quiz = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(
+        User,
+        related_name="quizzes",
+        on_delete=models.CASCADE
+    )
+    quiz_video = models.ForeignKey(
+        Video,
+        related_name="quizzes",
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['uuid_quiz', 'user']  # Один квиз может быть у разных пользователей
+
+    def __str__(self):
+        return f"Quiz for {self.quiz_video.title} - {self.user.email}"
     
     

@@ -227,9 +227,6 @@ const MindMap = ({ mindmapData }) => {
 
   return (
     <div className="mindmap-container">
-      <div className="mindmap-header">
-        <h3>📊 Mind Map: {mindmapData.title}</h3>
-      </div>
       <div className="mindmap-flow">
         <ReactFlow
           nodes={nodesState}

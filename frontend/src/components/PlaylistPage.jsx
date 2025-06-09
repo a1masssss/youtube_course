@@ -33,17 +33,6 @@ const PlaylistPage = () => {
     navigate(`/${playlistUuid}/${videoUuid}`);
   };
 
-  const getProcessingStats = () => {
-    if (!playlist?.videos) return { total: 0, withTranscript: 0, withSummary: 0 };
-    
-    const total = playlist.videos.length;
-    const withTranscript = playlist.videos.filter(v => v.full_transcript).length;
-    const withSummary = playlist.videos.filter(v => v.summary).length;
-    
-    return { total, withTranscript, withSummary };
-  };
-
-
   if (loading) {
     return (
       <div className="loading-container">
@@ -64,8 +53,6 @@ const PlaylistPage = () => {
     );
   }
 
-  const stats = getProcessingStats();
-
   return (
     <div className="playlist-page">
       <div className="playlist-header">
@@ -75,11 +62,6 @@ const PlaylistPage = () => {
         
         <div className="playlist-info">
           <h2>{playlist?.title}</h2>
-          <div className="playlist-stats">
-            <span className="stat-item">📹 {stats.total} videos</span>
-            <span className="stat-item">📝 {stats.withTranscript} transcripts</span>
-            <span className="stat-item">📄 {stats.withSummary} summaries</span>
-          </div>
         </div>
       </div>
       

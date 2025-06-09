@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 import './HomePage.css';
 
+
+
+
+
 const HomePage = () => {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);

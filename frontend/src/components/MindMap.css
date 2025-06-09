@@ -8,24 +8,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.mindmap-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1rem 1.5rem;
-  text-align: center;
-}
 
-.mindmap-header h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
 
-.mindmap-header p {
-  margin: 0;
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
+
+
 
 .mindmap-flow {
   height: calc(100% - 80px);
@@ -284,19 +270,6 @@
   .mindmap-container {
     height: 500px;
   }
-
-  .mindmap-header {
-    padding: 0.8rem 1rem;
-  }
-
-  .mindmap-header h3 {
-    font-size: 1.2rem;
-  }
-
-  .mindmap-header p {
-    font-size: 0.8rem;
-  }
-
   .mindmap-root-node {
     min-width: 180px;
     padding: 16px;

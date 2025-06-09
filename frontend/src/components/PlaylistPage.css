@@ -53,11 +53,7 @@
   font-weight: 600;
 }
 
-.playlist-stats {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
+
 
 .stat-item {
   background: rgba(255, 255, 255, 0.1);
@@ -154,9 +150,6 @@
     min-width: auto;
   }
   
-  .playlist-stats {
-    justify-content: center;
-  }
   
   .videos-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -170,10 +163,6 @@
     gap: 15px;
   }
   
-  .playlist-stats {
-    flex-direction: column;
-    gap: 10px;
-  }
   
   .stat-item {
     text-align: center;
