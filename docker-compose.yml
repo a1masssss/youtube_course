@@ -3,7 +3,8 @@ version: '3.8'
 services:
   db:
     image: postgres:14
-      container_name: coursiva_prod_db
+    container_name: coursiva_prod_db
+    environment:
       POSTGRES_USER: secret
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: secret
@@ -28,7 +29,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-
 
 volumes:
   postgres_data:
