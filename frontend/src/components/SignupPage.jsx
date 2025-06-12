@@ -70,38 +70,78 @@ const SignupPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log("🚀 Starting registration submission...");
+    
     if (!validateForm()) {
+      console.warn("❌ Form validation failed");
       return;
     }
 
+    console.log("✅ Form validation passed");
     setLoading(true);
     
     try {
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, {
+      const requestData = {
         email: formData.email,
         password: formData.password,
         first_name: formData.firstName,
-        last_name: formData.lastName,
+        last_name: formData.lastName
+      };
+      
+      console.log("📤 Sending signup request to:", API_ENDPOINTS.AUTH.REGISTER);
+      console.log("📦 Request data:", {
+        ...requestData,
+        password: '********' // Hide password in logs
+      });
+      
+      const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, requestData);
+
+      console.log("📥 Registration response received:", {
+        ...response.data,
+        tokens: response.data.tokens ? '**present**' : '**missing**'
       });
 
+      // Extract tokens from the nested tokens object
       const { tokens } = response.data;
       
+      if (!tokens || !tokens.access || !tokens.refresh) {
+        console.error("❌ Invalid token format in response:", {
+          tokensPresent: !!tokens,
+          accessPresent: tokens?.access ? 'yes' : 'no',
+          refreshPresent: tokens?.refresh ? 'yes' : 'no'
+        });
+        throw new Error('Invalid token format in response');
+      }
+
+      console.log("🔑 Tokens extracted successfully");
+
       // Store tokens
       localStorage.setItem('access_token', tokens.access);
       localStorage.setItem('refresh_token', tokens.refresh);
+      console.log("💾 Tokens stored in localStorage");
       
       // Login the user automatically
+      console.log("🔄 Attempting automatic login...");
       const loginResult = await login(formData.email, formData.password);
       
       if (loginResult.success) {
+        console.log("✅ Automatic login successful");
         navigate('/', { replace: true });
+      } else {
+        console.warn("⚠️ Automatic login failed:", loginResult);
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.error || 'Registration failed';
+      console.error('❌ Registration error:', error);
+      console.error('Error details:', {
+        response: error.response?.data,
+        status: error.response?.status,
+        message: error.message
+      });
+      const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
       setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
+      console.log("🏁 Registration process completed");
     }
   };
 

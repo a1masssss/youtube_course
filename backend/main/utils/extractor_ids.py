@@ -44,3 +44,20 @@ def fetch_playlist_videos(playlist_url: str):
 
 if __name__ == '__main__':
     print(fetch_playlist_info("https://youtube.com/playlist?list=PLu71SKxNbfoDOf-6vAcKmazT92uLnWAgy&si=oKyXp9A8Qn5jAEVQ"))
+
+
+
+
+
+
+
+
+
+import yt_dlp
+def get_video_id(url: str):
+
+
+    with yt_dlp.YoutubeDL() as ydl:
+        info = ydl.extract_info(url, download=False)
+        video_id = info.get("id")
+        print("Video ID:", video_id)

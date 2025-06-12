@@ -36,28 +36,37 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
+        logger.info("🚀 Starting registration process")
+        logger.info(f"📥 RegisterView received data: {request.data}")
+        
         email = request.data.get('email')
         password = request.data.get('password')
         first_name = request.data.get('first_name')
         last_name = request.data.get('last_name')
         
+        logger.info(f"👤 Attempting to register user with email: {email}")
+        
         # Validation
         if not email or not password:
+            logger.error("❌ Email or password missing")
             return Response({
                 'error': 'Email and password are required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         if User.objects.filter(email=email).exists():
+            logger.error(f"❌ User with email {email} already exists")
             return Response({
                 'error': 'User with this email already exists'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         if len(password) < 6:
+            logger.error("❌ Password too short")
             return Response({
                 'error': 'Password must be at least 6 characters long'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            logger.info("👥 Creating new user...")
             # Create user
             user = User.objects.create_user(
                 email=email,
@@ -66,10 +75,14 @@ class RegisterView(APIView):
                 last_name=last_name or ''
             )
             
-            # Generate tokens
-            tokens = get_tokens_for_user(user)
+            logger.info(f"✅ User created successfully with ID: {user.id}")
             
-            return Response({
+            # Generate tokens
+            logger.info("🔑 Generating authentication tokens...")
+            tokens = get_tokens_for_user(user)
+            logger.info("✅ Tokens generated successfully")
+            
+            response_data = {
                 'message': 'Registration successful',
                 'tokens': tokens,
                 'user': {
@@ -78,9 +91,12 @@ class RegisterView(APIView):
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                 }
-            }, status=status.HTTP_201_CREATED)
+            }
+            logger.info(f"📤 Sending response: {response_data}")
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            logger.error(f"❌ Registration failed with error: {str(e)}")
             return Response({
                 'error': 'Registration failed'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

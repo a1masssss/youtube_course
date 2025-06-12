@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 import './MyCoursesPage.css';
 
@@ -8,9 +9,15 @@ const MyCoursesPage = () => {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { playlistId, title }
+  const [deleting, setDeleting] = useState(false);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
+      if (fetchingRef.current) return;
+      
+      fetchingRef.current = true;
       try {
         const response = await apiClient.get(API_ENDPOINTS.MY_COURSES);
         console.log('📋 Playlists data:', response.data);
@@ -20,6 +27,7 @@ const MyCoursesPage = () => {
         setError('Failed to load courses');
       } finally {
         setLoading(false);
+        fetchingRef.current = false;
       }
     };
 
@@ -28,6 +36,38 @@ const MyCoursesPage = () => {
 
   const handlePlaylistClick = (playlistUuid) => {
     navigate(`/${playlistUuid}`);
+  };
+
+  const handleDeleteClick = (e, playlist) => {
+    e.stopPropagation(); // Prevent card click
+    setDeleteConfirmation({
+      playlistId: playlist.id,
+      title: playlist.title
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation) return;
+    
+    setDeleting(true);
+    try {
+      await apiClient.delete(API_ENDPOINTS.DELETE_COURSE(deleteConfirmation.playlistId));
+      
+      // Remove from local state
+      setPlaylists(prev => prev.filter(p => p.id !== deleteConfirmation.playlistId));
+      
+      console.log('✅ Course deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting course:', error);
+      setError('Failed to delete course');
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmation(null);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation(null);
   };
 
   const getPlaylistThumbnail = (playlist) => {
@@ -110,10 +150,51 @@ const MyCoursesPage = () => {
 
                 <div className="course-info">
                   <h3 className="course-title">{playlist.title}</h3>
+                  <button 
+                    className="delete-course-button"
+                    onClick={(e) => handleDeleteClick(e, playlist)}
+                    title="Delete course"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>⚠️ Confirm Deletion</h3>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this course?</p>
+              <div className="course-to-delete">
+                <strong>"{deleteConfirmation.title}"</strong>
+              </div>
+              <p className="warning-text">This action cannot be undone.</p>
+            </div>
+            <div className="modal-actions">
+              <button 
+                className="cancel-button"
+                onClick={cancelDelete}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="delete-button"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

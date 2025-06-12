@@ -8,7 +8,7 @@ from django.http import Http404, StreamingHttpResponse
 
 from main.utils.summary_chatbot import summary_chatbot
 
-from .models import Playlist, Video, Flashcard, MindMap
+from .models import Playlist, Video, Flashcard, MindMap, Quiz
 from .serializers import PlaylistSerializer, VideoSerializer, PlaylistWithVideosSerializer
 from main.utils.extractor_ids import fetch_playlist_info, fetch_playlist_videos
 from main.utils.transcript_fetch import fetch_youtube_data, extract_full_transcript
@@ -16,6 +16,7 @@ from main.utils.summarizer import summarize_transcript
 
 from main.utils.generate_flashcards import generate_flashcards_from_transcript
 from main.utils.generate_mindmap import generate_mindmap_from_transcript
+from main.utils.generate_quiz import generate_quiz_from_transcript
 
 
 class PlaylistAPIView(APIView):
@@ -60,10 +61,12 @@ class PlaylistAPIView(APIView):
             video_ids = [v["id"] for v in videos_info]
             
             transcript_data = fetch_youtube_data(video_ids)
+            
 
             # Extract both full transcripts and timecode transcripts by video ID
             transcripts_by_id = {}
             timecodes_by_id = {}
+            durations_by_id = {}
             
             if transcript_data:
                 for video_transcript in transcript_data:
@@ -83,10 +86,20 @@ class PlaylistAPIView(APIView):
                         except (KeyError, IndexError) as e:
                             print(f"❌ Error extracting timecode for video {video_id}: {str(e)}")
                             timecodes_by_id[video_id] = None
+                        
+                        # Extract duration in seconds
+                        try:
+                            duration_seconds = int(video_transcript['microformat']['playerMicroformatRenderer']['lengthSeconds'])
+                            durations_by_id[video_id] = duration_seconds
+                            print(f"📏 Video {video_id} duration: {duration_seconds} seconds")
+                        except (KeyError, ValueError, TypeError) as e:
+                            print(f"❌ Error extracting duration for video {video_id}: {str(e)}")
+                            durations_by_id[video_id] = 0
 
             for v in videos_info:
                 transcript = transcripts_by_id.get(v["id"], "")
                 timecode = timecodes_by_id.get(v["id"], None)
+                duration_sec = durations_by_id.get(v["id"], 0)
                 summary = ""
                 
                 if transcript and transcript.strip():
@@ -106,7 +119,8 @@ class PlaylistAPIView(APIView):
                     summary=summary,
                     playlist=playlist,
                     timecode_transcript=timecode,
-                    user=request.user  # Привязываем к текущему пользователю
+                    duration_sec=duration_sec,
+                    user=request.user
                 )
 
             serializer = PlaylistSerializer(playlist)
@@ -216,66 +230,84 @@ class SummaryChatbotAPIView(APIView):
 
 
 class GenerateFlashCardsView(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        print("🚀 Received POST request to /api/flashcards/")
+        print("📦 Request data:", request.data)
+        print(f"👤 User: {request.user.email}")
+        
         video_uuid = request.data.get("video_uuid")
         
         if not video_uuid:
+            print("❌ No video_uuid provided")
             return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Временно убираем фильтрацию по пользователю для тестирования
-            video = get_object_or_404(Video, uuid_video=video_uuid)
+            # Получаем видео текущего пользователя
+            video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
+            print(f"🎥 Found video: {video.title}")
             
-            if not video.full_transcript:
+            if not video.full_transcript or not video.full_transcript.strip():
+                print("❌ No transcript available for this video")
                 return Response({"error": "No transcript available for this video"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Check if flashcards already exist
-            existing_flashcard = Flashcard.objects.filter(
-                flashcard_video=video
-            ).first()
+            print(f"📄 Transcript length: {len(video.full_transcript)} characters")
             
-            if existing_flashcard:
-                return Response({
-                    "message": "Flashcards already exist for this video",
-                    "flashcards": existing_flashcard.flashcards_json,
-                    "uuid_flashcard": existing_flashcard.uuid_flashcard
-                }, status=200)
+            # Сначала очищаем дубликаты если они есть
+            existing_flashcards = Flashcard.objects.filter(flashcard_video=video, user=request.user)
+            if existing_flashcards.count() > 1:
+                print(f"🔧 Found {existing_flashcards.count()} duplicate flashcards, cleaning up...")
+                # Оставляем только первую запись, остальные удаляем
+                first_flashcard = existing_flashcards.first()
+                Flashcard.objects.filter(flashcard_video=video, user=request.user).exclude(id=first_flashcard.id).delete()
+                print("✅ Duplicate flashcards cleaned up")
 
-            flashcards_data = generate_flashcards_from_transcript(video.full_transcript)
+            # Теперь безопасно используем get_or_create
+            flashcards_data, created = generate_flashcards_from_transcript(video, request.user)
             
-            # Save to database - используем пользователя из видео
-            flashcard = Flashcard.objects.create(
-                flashcards_json=flashcards_data,
-                user=video.user,
-                flashcard_video=video
-            )
+            if created:
+                print("✅ New flashcards generated")
+                message = "Flashcards generated successfully"
+                status_code = 201
+            else:
+                print("✅ Existing flashcards found")
+                message = "Flashcards already exist for this video"
+                status_code = 200
+            
+            # Получаем uuid_flashcard из базы данных
+            flashcard_obj = Flashcard.objects.filter(flashcard_video=video, user=request.user).first()
+            
+            if not flashcard_obj:
+                print("❌ Flashcard object not found after generation")
+                return Response({"error": "Failed to retrieve flashcard data"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             return Response({
-                "message": "Flashcards generated successfully",
-                "flashcards": flashcards_data,
-                "uuid_flashcard": flashcard.uuid_flashcard,
-                "video_title": video.title
-            }, status=201)
+                "message": message,
+                "flashcards": flashcards_data,  # ← Используем данные из функции, не из БД
+                "uuid_flashcard": flashcard_obj.uuid_flashcard,
+                "video_title": video.title,
+                "created": created
+            }, status=status_code)
                 
         except Video.DoesNotExist:
+            print("❌ Video not found")
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    from django.http import Http404
+        except ValueError as e:
+            print(f"❌ Flashcards generation failed: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request):
+        print("🚀 Received GET request to /api/flashcards/")
         uuid_video = request.query_params.get("video_uuid")
         
         if not uuid_video:
             return Response({"error": "video_uuid query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            video = get_object_or_404(Video, uuid_video=uuid_video)
-            flashcard = get_object_or_404(Flashcard, flashcard_video=video)
+            video = get_object_or_404(Video, uuid_video=uuid_video, user=request.user)
+            flashcard = get_object_or_404(Flashcard, flashcard_video=video, user=request.user)
 
             return Response({
                 "flashcards": flashcard.flashcards_json,
@@ -284,8 +316,7 @@ class GenerateFlashCardsView(APIView):
             }, status=200)
 
         except Http404 as e:
-            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
-
+            return Response({"error": "Flashcards not found for this video"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -367,28 +398,117 @@ class GenerateMindMapView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+   
+
+
+
+
+
+class GenerateQuizView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     
-    def delete(self, request):
-        """Delete existing mindmap for regeneration"""
+    def post(self, request):
+        print("🚀 Received POST request to /api/generate-quiz/")
+        print("📦 Request data:", request.data)
+        print(f"👤 User: {request.user.email}")
+        
         video_uuid = request.data.get("video_uuid")
-        
         if not video_uuid:
+            print("❌ No video_uuid provided")
             return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
+            # Получаем видео текущего пользователя
             video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
+            print(f"🎥 Found video: {video.title}")
             
-            # Delete existing mindmap
-            deleted_count = MindMap.objects.filter(mindmap_video=video, user=request.user).delete()[0]
+            # Проверяем, есть ли транскрипт
+            if not video.full_transcript or not video.full_transcript.strip():
+                print("❌ No transcript available for this video")
+                return Response({"error": "No transcript available for this video"}, status=status.HTTP_400_BAD_REQUEST)
             
-            if deleted_count > 0:
-                return Response({"message": "Mindmap deleted successfully"}, status=200)
-            else:
-                return Response({"error": "No mindmap found to delete"}, status=status.HTTP_404_NOT_FOUND)
+            # Проверяем длительность видео
+            if not video.duration_sec or video.duration_sec <= 0:
+                print("❌ Invalid video duration")
+                return Response({"error": "Invalid video duration"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"📝 Video duration: {video.duration_sec} seconds")
+            print(f"📄 Transcript length: {len(video.full_transcript)} characters")
+            
+            # Проверяем существующие квизы и очищаем дубликаты
+            try:
+                existing_quizzes = Quiz.objects.filter(quiz_video=video, user=request.user)
+                
+                if existing_quizzes.count() > 1:
+                    print(f"🔧 Found {existing_quizzes.count()} duplicate quizzes, cleaning up...")
+                    # Оставляем только первый квиз, остальные удаляем
+                    first_quiz = existing_quizzes.first()
+                    Quiz.objects.filter(quiz_video=video, user=request.user).exclude(id=first_quiz.id).delete()
+                    quiz = first_quiz
+                    created = False
+                elif existing_quizzes.count() == 1:
+                    quiz = existing_quizzes.first()
+                    created = False
+                else:
+                    # Создаем новый квиз
+                    quiz = Quiz.objects.create(
+                        quiz_video=video,
+                        user=request.user,
+                        quiz_json=[],
+                        questions_count=0,
+                        quiz_duration_seconds=video.duration_sec
+                    )
+                    created = True
+                
+                # Если квиз пустой или нужно перегенерировать
+                if created or not quiz.quiz_json or len(quiz.quiz_json) == 0:
+                    print("🎯 Generating new quiz...")
+                    
+                    # Генерируем квиз с помощью AI
+                    quiz_questions = generate_quiz_from_transcript(
+                        transcript=video.full_transcript,
+                        duration_seconds=video.duration_sec
+                    )
+                    
+                    # Сохраняем сгенерированные вопросы
+                    quiz.quiz_json = quiz_questions
+                    quiz.questions_count = len(quiz_questions)
+                    quiz.save()
+                    
+                    print(f"✅ Successfully generated quiz with {len(quiz_questions)} questions")
+                    
+                    return Response({
+                        "message": "Quiz generated successfully",
+                        "quiz_uuid": str(quiz.uuid_quiz),
+                        "questions_count": len(quiz_questions),
+                        "quiz_data": quiz_questions,
+                        "video_title": video.title,
+                        "created": created
+                    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+                else:
+                    print("📋 Quiz already exists, returning existing quiz")
+                    
+                    return Response({
+                        "message": "Quiz already exists",
+                        "quiz_uuid": str(quiz.uuid_quiz),
+                        "questions_count": len(quiz.quiz_json) if quiz.quiz_json else 0,
+                        "quiz_data": quiz.quiz_json,
+                        "video_title": video.title,
+                        "created": False
+                    }, status=status.HTTP_200_OK)
+                    
+            except Exception as quiz_error:
+                print(f"❌ Error with quiz generation: {str(quiz_error)}")
+                return Response({"error": f"Quiz generation failed: {str(quiz_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
         except Video.DoesNotExist:
+            print("❌ Video not found or doesn't belong to user")
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            print(f"❌ Unexpected error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 

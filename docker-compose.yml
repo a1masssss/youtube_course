@@ -14,6 +14,7 @@ services:
       - "5433:5432"
 
   backend:
+    container_name: coursiva_prod_backend
     build:
       context: ./backend
       dockerfile: Dockerfile

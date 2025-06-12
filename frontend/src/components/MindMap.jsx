@@ -67,6 +67,10 @@ const nodeTypes = {
 const edgeTypes = {};
 
 const MindMap = ({ mindmapData }) => {
+  // Memoize nodeTypes and edgeTypes to prevent React Flow warnings
+  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+  const memoizedEdgeTypes = useMemo(() => edgeTypes, []);
+
   const { nodes, edges } = useMemo(() => {
     if (!mindmapData || !mindmapData.root || !mindmapData.root.message) {
       return { nodes: [], edges: [] };
@@ -207,7 +211,7 @@ const MindMap = ({ mindmapData }) => {
     return { nodes, edges };
   }, [mindmapData]);
 
-  const [nodesState, , onNodesChange] = useNodesState(nodes);
+  const [nodesState, setNodes, onNodesChange] = useNodesState(nodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(edges);
 
   const onConnect = useCallback(
@@ -240,8 +244,8 @@ const MindMap = ({ mindmapData }) => {
             style: { strokeWidth: 3 },
             markerEnd: { type: MarkerType.ArrowClosed },
           }}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
+          nodeTypes={memoizedNodeTypes}
+          edgeTypes={memoizedEdgeTypes}
           fitViewOptions={{
             padding: 0.2,
             includeHiddenNodes: false,

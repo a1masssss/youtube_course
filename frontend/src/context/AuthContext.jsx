@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext();
@@ -14,19 +14,23 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const profileFetchingRef = useRef(false);
 
   // Check if user is logged in on app start
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    if (token) {
+    if (token && !profileFetchingRef.current) {
       // Verify token and get user info
       fetchUserProfile();
-    } else {
+    } else if (!token) {
       setLoading(false);
     }
   }, []);
 
   const fetchUserProfile = async () => {
+    if (profileFetchingRef.current) return;
+    
+    profileFetchingRef.current = true;
     try {
       const response = await apiClient.get(API_ENDPOINTS.AUTH.PROFILE);
       setUser(response.data);
@@ -37,6 +41,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('refresh_token');
     } finally {
       setLoading(false);
+      profileFetchingRef.current = false;
     }
   };
 

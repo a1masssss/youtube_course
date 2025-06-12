@@ -48,3 +48,5 @@ def extract_full_transcript(transcript_data):
     
     return '\n\n'.join(all_transcripts)
 
+
+

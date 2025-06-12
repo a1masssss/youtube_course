@@ -167,8 +167,25 @@ BACKEND_URL = os.getenv('BACKEND_URL')
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
-    BACKEND_URL,
+    # BACKEND_URL,
+    "https://coursiva.xyz",
+    "https://coursiva.xyz:80",
+    "https://www.coursiva.xyz:443",
 ]
+
+# # in prod
+# CORS_ALLOWED_ORIGINS = [
+#     FRONTEND_URL,
+#     "https://coursiva.xyz",
+#     "https://www.coursiva.xyz",
+#     "http://coursiva.xyz",
+#     "http://www.coursiva.xyz",
+#     "http://164.90.185.179:3000",
+#     "http://164.90.185.179:80",
+#     "http://164.90.185.179:443",
+# ]
+
+
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -263,7 +280,6 @@ LOGOUT_REDIRECT_URL = f"{FRONTEND_URL}/"
 
 SECURE_REFERRER_POLICY = 'no-referrer-when-downgrade'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
-
 
 
 # Session settings for OAuth

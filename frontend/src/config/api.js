@@ -68,8 +68,11 @@ export const API_ENDPOINTS = {
   PLAYLISTS: `/playlists/`,
   VIDEOS: `/videos/`,
   MY_COURSES: `/my-courses/`,
+  DELETE_COURSE: (playlistId) => `/my-courses/${playlistId}/delete/`,
   SUMMARY_CHATBOT: `/summary-chatbot/`,
   FLASHCARDS: `/flashcards/`,
+  MINDMAP: `/mindmap/`,
+  QUIZ: `/quiz/`,
   
   // Authentication endpoints
   AUTH: {
