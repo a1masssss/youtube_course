@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 import GoogleLoginButton from './GoogleLoginButton';
 import './SignupPage.css';
@@ -15,9 +14,6 @@ const SignupPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -84,6 +80,7 @@ const SignupPage = () => {
       const requestData = {
         email: formData.email,
         password: formData.password,
+        confirm_password: formData.confirmPassword,
         first_name: formData.firstName,
         last_name: formData.lastName
       };
@@ -96,40 +93,24 @@ const SignupPage = () => {
       
       const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, requestData);
 
-      console.log("📥 Registration response received:", {
-        ...response.data,
-        tokens: response.data.tokens ? '**present**' : '**missing**'
+      console.log("📥 Registration response received:", response.data);
+
+      // Registration successful - show success message
+      setErrors({ 
+        success: `Registration successful! Please check your email (${formData.email}) to activate your account.` 
       });
-
-      // Extract tokens from the nested tokens object
-      const { tokens } = response.data;
       
-      if (!tokens || !tokens.access || !tokens.refresh) {
-        console.error("❌ Invalid token format in response:", {
-          tokensPresent: !!tokens,
-          accessPresent: tokens?.access ? 'yes' : 'no',
-          refreshPresent: tokens?.refresh ? 'yes' : 'no'
-        });
-        throw new Error('Invalid token format in response');
-      }
-
-      console.log("🔑 Tokens extracted successfully");
-
-      // Store tokens
-      localStorage.setItem('access_token', tokens.access);
-      localStorage.setItem('refresh_token', tokens.refresh);
-      console.log("💾 Tokens stored in localStorage");
+      // Clear the form
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+      });
       
-      // Login the user automatically
-      console.log("🔄 Attempting automatic login...");
-      const loginResult = await login(formData.email, formData.password);
+      console.log("✅ Registration completed successfully");
       
-      if (loginResult.success) {
-        console.log("✅ Automatic login successful");
-        navigate('/', { replace: true });
-      } else {
-        console.warn("⚠️ Automatic login failed:", loginResult);
-      }
     } catch (error) {
       console.error('❌ Registration error:', error);
       console.error('Error details:', {
@@ -137,7 +118,36 @@ const SignupPage = () => {
         status: error.response?.status,
         message: error.message
       });
-      const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
+      
+      let errorMessage = 'Registration failed';
+      
+      if (error.response?.data) {
+        const responseData = error.response.data;
+        
+        // Handle validation errors (like duplicate email)
+        if (responseData.email && Array.isArray(responseData.email)) {
+          errorMessage = responseData.email[0]; // "user with this email already exists."
+          // Make it more user-friendly
+          if (errorMessage.toLowerCase().includes('already exists')) {
+            errorMessage = 'A user with this email address already exists.';
+          }
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else {
+          // Handle other field validation errors
+          const firstError = Object.values(responseData)[0];
+          if (Array.isArray(firstError)) {
+            errorMessage = firstError[0];
+          } else if (typeof firstError === 'string') {
+            errorMessage = firstError;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setErrors({ general: errorMessage });
     } finally {
       setLoading(false);
@@ -157,6 +167,12 @@ const SignupPage = () => {
           {errors.general && (
             <div className="error-message general-error">
               {errors.general}
+            </div>
+          )}
+          
+          {errors.success && (
+            <div className="success-message">
+              {errors.success}
             </div>
           )}
 

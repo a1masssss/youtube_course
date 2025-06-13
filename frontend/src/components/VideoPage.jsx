@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
 import './VideoPage.css';
@@ -11,18 +11,19 @@ const VideoPage = () => {
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const videoLoadingRef = useRef(false);
-  const loadedVideoRef = useRef(null);
   
   // Tab state
   const [activeTab, setActiveTab] = useState('summary');
 
   // Load video data
   useEffect(() => {
+    let isMounted = true;
+
     const loadVideo = async () => {
-      if (videoLoadingRef.current || loadedVideoRef.current === videoUuid) return;
+      if (!videoUuid) return;
       
-      videoLoadingRef.current = true;
+      setLoading(true);
+      setError(null);
       
       try {
         const token = localStorage.getItem('access_token');
@@ -32,31 +33,32 @@ const VideoPage = () => {
           }
         });
 
+        if (!isMounted) return;
+
         if (response.ok) {
           const data = await response.json();
           setVideo(data);
-          loadedVideoRef.current = videoUuid;
           console.log('Video loaded:', data);
         } else {
           setError('Failed to load video');
         }
       } catch (error) {
-        console.error('Error loading video:', error);
-        setError(error.message);
+        if (isMounted) {
+          console.error('Error loading video:', error);
+          setError(error.message);
+        }
       } finally {
-        setLoading(false);
-        videoLoadingRef.current = false;
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    if (videoUuid && loadedVideoRef.current !== videoUuid) {
-      // Reset states when videoUuid changes
-      setVideo(null);
-      setError(null);
-      setLoading(true);
-      
-      loadVideo();
-    }
+    loadVideo();
+
+    return () => {
+      isMounted = false;
+    };
   }, [videoUuid]);
 
   if (loading) {
@@ -202,7 +204,7 @@ const VideoPage = () => {
                 </div>
               )}
               {activeTab === 'mindmap' && <MindmapTab video={video} />}
-              {activeTab === 'quiz' && <QuizTab video={video} />}
+              {activeTab === 'quiz' && <QuizTab key={video?.uuid_video} video={video} />}
               {activeTab === 'chat' && <ChatTab video={video} />}
             </div>
           </div>

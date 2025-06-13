@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '../../config/api';
 import './QuizTab.css';
 
@@ -7,18 +7,59 @@ const QuizTab = ({ video }) => {
   const [quizData, setQuizData] = useState(null);
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState(null);
-  const [quizAttempted, setQuizAttempted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
+  
+  // Ref to prevent double requests
+  const initialFetchDone = useRef(false);
 
-  // Load quiz function
-  const loadQuiz = useCallback(async () => {
-    if (!video || quizAttempted) return;
+  // Fetch existing quiz
+  const fetchQuiz = useCallback(async () => {
+    if (!video?.uuid_video) return;
     
     setQuizLoading(true);
     setQuizError(null);
-    setQuizAttempted(true);
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ}?video_uuid=${video.uuid_video}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          }
+        }
+      );
+
+      if (response.status === 404) {
+        // Quiz not found - clear data to show generate button
+        setQuizData(null);
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setQuizData(data.quiz.quiz_json || []);
+        console.log('✅ Quiz loaded successfully:', data);
+      } else {
+        throw new Error(data.error || 'Failed to load quiz');
+      }
+    } catch (error) {
+      console.error('❌ Quiz loading error:', error);
+      setQuizError(error.message);
+    } finally {
+      setQuizLoading(false);
+    }
+  }, [video?.uuid_video]);
+
+  // Generate new quiz
+  const generateQuiz = useCallback(async () => {
+    if (!video?.uuid_video) return;
+    
+    setQuizLoading(true);
+    setQuizError(null);
     
     try {
       const token = localStorage.getItem('access_token');
@@ -36,38 +77,43 @@ const QuizTab = ({ video }) => {
       const data = await response.json();
       
       if (response.ok) {
-        setQuizData(data.quiz_data || []);
+        setQuizData(data.quiz.quiz_json || []);
         setCurrentQuestionIndex(0);
         setSelectedAnswers({});
         setShowResults(false);
-        console.log('✅ Quiz loaded successfully:', data);
+        console.log('✅ Quiz generated successfully:', data);
       } else {
-        throw new Error(data.error || 'Failed to load quiz');
+        throw new Error(data.error || 'Failed to generate quiz');
       }
     } catch (error) {
-      console.error('❌ Quiz loading error:', error);
+      console.error('❌ Quiz generation error:', error);
       setQuizError(error.message);
     } finally {
       setQuizLoading(false);
     }
-  }, [video, quizAttempted]);
+  }, [video?.uuid_video]);
 
-  // Reset quiz state when video changes
+  // Reset state and load quiz when video changes
   useEffect(() => {
-    setQuizAttempted(false);
-    setQuizData(null);
-    setQuizError(null);
+    const videoId = video?.uuid_video;
+    if (!videoId) return;
+
+    // Reset state
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setShowResults(false);
-  }, [video?.uuid_video]);
-
-  // Load quiz when component mounts
-  useEffect(() => {
-    if (video && !quizAttempted && !quizLoading) {
-      loadQuiz();
+    
+    // Prevent double fetch in development mode
+    if (!initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchQuiz();
     }
-  }, [video, quizAttempted, quizLoading, loadQuiz]);
+
+    // Cleanup function to reset the ref when component unmounts or video changes
+    return () => {
+      initialFetchDone.current = false;
+    };
+  }, [video?.uuid_video, fetchQuiz]);
 
   if (quizLoading) {
     return (
@@ -81,22 +127,22 @@ const QuizTab = ({ video }) => {
   if (quizError) {
     return (
       <div className="quiz-empty">
-        <p>Error loading quiz: {quizError}</p>
-        <button className="control-button" onClick={() => {
-          setQuizAttempted(false);
-          loadQuiz();
-        }}>
+        <p>Error: {quizError}</p>
+        <button className="control-button" onClick={fetchQuiz}>
           Try Again
         </button>
       </div>
     );
   }
 
+  // Show generate button if no quiz exists
   if (!quizData || !Array.isArray(quizData) || quizData.length === 0) {
     return (
       <div className="quiz-empty">
         <p>No quiz available for this video yet.</p>
-        <small>Quiz will be generated based on video content.</small>
+        <button className="control-button" onClick={generateQuiz}>
+          Generate Quiz
+        </button>
       </div>
     );
   }
@@ -107,10 +153,7 @@ const QuizTab = ({ video }) => {
     return (
       <div className="quiz-empty">
         <p>Invalid quiz data format.</p>
-        <button className="control-button" onClick={() => {
-          setQuizAttempted(false);
-          loadQuiz();
-        }}>
+        <button className="control-button" onClick={fetchQuiz}>
           Try Again
         </button>
       </div>
@@ -155,7 +198,6 @@ const QuizTab = ({ video }) => {
   };
 
   const isAnswerSelected = selectedAnswers[currentQuestionIndex] !== undefined;
-  const selectedAnswer = selectedAnswers[currentQuestionIndex];
 
   if (showResults) {
     const score = calculateScore();
@@ -198,10 +240,9 @@ const QuizTab = ({ video }) => {
           <button
             className="control-button"
             onClick={() => {
-              setQuizAttempted(false);
               setSelectedAnswers({});
               setShowResults(false);
-              loadQuiz();
+              setCurrentQuestionIndex(0);
             }}
           >
             Try Again
@@ -223,7 +264,7 @@ const QuizTab = ({ video }) => {
               <button
                 key={index}
                 className={`option-button ${
-                  selectedAnswer === index ? 'selected' : ''
+                  selectedAnswers[currentQuestionIndex] === index ? 'selected' : ''
                 }`}
                 onClick={() => handleAnswerSelect(index)}
                 disabled={showResults}

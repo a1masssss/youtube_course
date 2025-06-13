@@ -28,7 +28,7 @@ const OAuthCallback = () => {
 
           // Fetch user profile and update auth context
           const backendUrl = process.env.REACT_APP_API_BASE_URL;
-          const response = await fetch(`${backendUrl}/auth/user/`, {
+          const response = await fetch(`${backendUrl}/auth/profile/`, {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
             },
@@ -58,7 +58,22 @@ const OAuthCallback = () => {
             throw new Error('Failed to get tokens from session');
           }
         } else {
-          throw new Error('No tokens received');
+          // If no tokens in URL, try to get them from Django session directly
+          console.log('No tokens in URL, trying to get from Django session...');
+          const backendUrl = process.env.REACT_APP_API_BASE_URL;
+          const response = await fetch(`${backendUrl}/auth/callback/`, {
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('refresh_token', data.refresh_token);
+            loginWithTokens(data.user, data.access_token, data.refresh_token);
+            navigate('/');
+          } else {
+            throw new Error('No tokens received and failed to get from session');
+          }
         }
       } catch (error) {
         console.error('OAuth callback error:', error);

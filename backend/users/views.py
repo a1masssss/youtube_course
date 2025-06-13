@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponseRedirect
 from allauth.socialaccount.models import SocialAccount
 from django.urls import reverse
@@ -20,6 +20,9 @@ from urllib.parse import urlencode
 import logging
 from rest_framework.authentication import SessionAuthentication
 import os
+from .models import User, EmailActivation
+from django.utils import timezone
+from .serializers import UserRegistrationSerializer
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -33,73 +36,41 @@ def get_tokens_for_user(user):
 
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny]
-    
+    permission_classes = []
+
     def post(self, request):
-        logger.info("🚀 Starting registration process")
-        logger.info(f"📥 RegisterView received data: {request.data}")
+        serializer = UserRegistrationSerializer(data=request.data)
         
-        email = request.data.get('email')
-        password = request.data.get('password')
-        first_name = request.data.get('first_name')
-        last_name = request.data.get('last_name')
-        
-        logger.info(f"👤 Attempting to register user with email: {email}")
-        
-        # Validation
-        if not email or not password:
-            logger.error("❌ Email or password missing")
-            return Response({
-                'error': 'Email and password are required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if User.objects.filter(email=email).exists():
-            logger.error(f"❌ User with email {email} already exists")
-            return Response({
-                'error': 'User with this email already exists'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if len(password) < 6:
-            logger.error("❌ Password too short")
-            return Response({
-                'error': 'Password must be at least 6 characters long'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            logger.info("👥 Creating new user...")
-            # Create user
-            user = User.objects.create_user(
-                email=email,
-                password=password,
-                first_name=first_name or '',
-                last_name=last_name or ''
-            )
-            
-            logger.info(f"✅ User created successfully with ID: {user.id}")
-            
-            # Generate tokens
-            logger.info("🔑 Generating authentication tokens...")
-            tokens = get_tokens_for_user(user)
-            logger.info("✅ Tokens generated successfully")
-            
-            response_data = {
-                'message': 'Registration successful',
-                'tokens': tokens,
-                'user': {
-                    'id': user.id,
+        if serializer.is_valid():
+            try:
+                # Create inactive user
+                user = serializer.save()
+                print(f"✅ User created: {user.email}")
+                
+                # Create and send activation email
+                activation = EmailActivation.objects.create(user=user)
+                try:
+                    activation.send_email()
+                    print(f"📧 Activation email sent to: {user.email}")
+                except Exception as e:
+                    print(f"❌ Failed to send activation email: {str(e)}")
+                    # Even if email fails, we return success but log the error
+                
+                return Response({
+                    'message': 'Registration successful. Please check your email to activate your account.',
                     'email': user.email,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
-                }
-            }
-            logger.info(f"📤 Sending response: {response_data}")
-            return Response(response_data, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            logger.error(f"❌ Registration failed with error: {str(e)}")
-            return Response({
-                'error': 'Registration failed'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                print(f"❌ Registration failed: {str(e)}")
+                return Response({
+                    'error': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print("❌ Invalid registration data:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -245,7 +216,8 @@ class OAuthRedirectView(APIView):
         if request.GET.get('redirected'):
             return Response({'error': 'Redirect loop detected'}, status=400)
         
-        frontend_url = os.getenv('FRONTEND_URL')
+        # Use environment variable or default to localhost for development
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
         
         # If user is authenticated, generate tokens and redirect with them
         if request.user.is_authenticated:
@@ -258,7 +230,8 @@ class OAuthRedirectView(APIView):
                 refresh_token = str(refresh)
                 
                 # Redirect to React with tokens in URL parameters
-                redirect_url = f'{frontend_url}/auth/callback/?access_token={access_token}&refresh_token={refresh_token}'
+                redirect_url = f'{frontend_url}/auth/callback/?access_token={access_token}&refresh_token={refresh_token}&from_django=true'
+                logger.info(f"🔄 Redirecting to: {redirect_url}")
                 return HttpResponseRedirect(redirect_url)
                 
             except Exception as e:
@@ -267,9 +240,101 @@ class OAuthRedirectView(APIView):
                 redirect_url = f'{frontend_url}/login?error=token_generation_failed'
                 return HttpResponseRedirect(redirect_url)
         else:
+            logger.warning("❌ User not authenticated in OAuth redirect")
             # Redirect with error
             redirect_url = f'{frontend_url}/login?error=oauth_failed'
             return HttpResponseRedirect(redirect_url)
+
+class ActivateAccountView(APIView):
+    """
+    View to handle account activation through email verification.
+    """
+    permission_classes = []  # Allow unauthenticated access
+    
+    def post(self, request):
+        token = request.data.get('token')
+        user_id = request.data.get('user_id')
+        
+        if not token or not user_id:
+            return Response(
+                {'error': 'Both token and user_id are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            # Get the activation record
+            activation = get_object_or_404(EmailActivation, 
+                                         token=token, 
+                                         user_id=user_id, 
+                                         is_active=False)
+            
+            # Check if token is expired
+            if activation.is_expired():
+                return Response(
+                    {'error': 'Activation link has expired. Please request a new one.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Activate the user
+            user = activation.user
+            user.is_active = True
+            user.save()
+            
+            # Mark activation as used
+            activation.is_active = True
+            activation.save()
+            
+            # Generate tokens for automatic login
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'message': 'Account activated successfully',
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {'error': 'Invalid activation link'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class ResendActivationEmailView(APIView):
+    """
+    View to resend activation email if the original expired.
+    """
+    permission_classes = []  # Allow unauthenticated access
+    
+    def post(self, request):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            user = User.objects.get(email=email, is_active=False)
+            
+            # Create new activation
+            activation = EmailActivation.objects.create(user=user)
+            
+            # Send new activation email
+            activation.send_email()
+            
+            return Response({
+                'message': 'Activation email has been sent',
+                'email': email
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'No pending activation found for this email'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 

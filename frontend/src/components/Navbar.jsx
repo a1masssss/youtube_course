@@ -30,7 +30,7 @@ const Navbar = () => {
         {/* Logo/Project Info Section */}
         <div className="navbar-brand">
           <div className="brand-info">
-            <Link to="/" className="brand-link">
+            <Link to="/landing" className="brand-link">
               <h1 className="brand-title">Coursiva</h1>
             </Link>
           </div>

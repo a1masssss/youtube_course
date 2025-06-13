@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 
 const AuthContext = createContext();
@@ -15,37 +15,53 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const profileFetchingRef = useRef(false);
+  const initialCheckDone = useRef(false);
 
-  // Check if user is logged in on app start
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token && !profileFetchingRef.current) {
-      // Verify token and get user info
-      fetchUserProfile();
-    } else if (!token) {
-      setLoading(false);
+  const fetchUserProfile = useCallback(async () => {
+    if (profileFetchingRef.current) {
+      console.log('Profile fetch already in progress, skipping...');
+      return;
     }
-  }, []);
-
-  const fetchUserProfile = async () => {
-    if (profileFetchingRef.current) return;
     
     profileFetchingRef.current = true;
+    console.log('Fetching user profile...');
+    
     try {
       const response = await apiClient.get(API_ENDPOINTS.AUTH.PROFILE);
       setUser(response.data);
+      console.log('User profile fetched successfully');
     } catch (error) {
       console.error('Error fetching user profile:', error);
       // Token might be expired, remove it
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+      setUser(null);
     } finally {
       setLoading(false);
       profileFetchingRef.current = false;
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  // Check if user is logged in on app start
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // Prevent multiple initialization attempts
+      if (initialCheckDone.current) return;
+      initialCheckDone.current = true;
+
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        // Verify token and get user info
+        await fetchUserProfile();
+      } else {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, [fetchUserProfile]); // Added fetchUserProfile to dependencies since it's now memoized
+
+  const login = useCallback(async (email, password) => {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, {
         email,
@@ -69,18 +85,18 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.message || 'Login failed' 
       };
     }
-  };
+  }, []);
 
-  const loginWithTokens = (userData, accessToken, refreshToken) => {
+  const loginWithTokens = useCallback((userData, accessToken, refreshToken) => {
     // Store tokens
     localStorage.setItem('access_token', accessToken);
     localStorage.setItem('refresh_token', refreshToken);
     
     // Set user data
     setUser(userData);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
@@ -96,9 +112,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('refresh_token');
       setUser(null);
     }
-  };
+  }, []);
 
-  const refreshToken = async () => {
+  const refreshToken = useCallback(async () => {
     try {
       const refresh = localStorage.getItem('refresh_token');
       if (!refresh) {
@@ -118,7 +134,16 @@ export const AuthProvider = ({ children }) => {
       logout();
       throw error;
     }
-  };
+  }, [logout]);
+
+  const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (token && !profileFetchingRef.current && !user) {
+      await fetchUserProfile();
+    } else if (!token) {
+      setLoading(false);
+    }
+  }, [user, fetchUserProfile]);
 
   const value = {
     user,
@@ -127,6 +152,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshToken,
     fetchUserProfile,
+    checkAuth,
     loading,
     isAuthenticated: !!user,
   };

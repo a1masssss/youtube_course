@@ -211,7 +211,7 @@ const MindMap = ({ mindmapData }) => {
     return { nodes, edges };
   }, [mindmapData]);
 
-  const [nodesState, setNodes, onNodesChange] = useNodesState(nodes);
+  const [nodesState, , onNodesChange] = useNodesState(nodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(edges);
 
   const onConnect = useCallback(

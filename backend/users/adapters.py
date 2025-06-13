@@ -41,7 +41,6 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
     
     def get_login_redirect_url(self, request):
         """
-        Force redirect to React frontend after OAuth login
+        Redirect to our OAuth success endpoint which will handle token generation
         """
-        frontend_url = os.getenv('FRONTEND_URL')
-        return f"{frontend_url}/auth/callback/"
+        return "/oauth/success/"

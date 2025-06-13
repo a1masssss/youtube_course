@@ -9,7 +9,12 @@ from django.http import Http404, StreamingHttpResponse
 from main.utils.summary_chatbot import summary_chatbot
 
 from .models import Playlist, Video, Flashcard, MindMap, Quiz
-from .serializers import PlaylistSerializer, VideoSerializer, PlaylistWithVideosSerializer
+from .serializers import (
+    PlaylistSerializer,
+    VideoSerializer,
+    PlaylistWithVideosSerializer,
+    QuizSerializer
+)
 from main.utils.extractor_ids import fetch_playlist_info, fetch_playlist_videos
 from main.utils.transcript_fetch import fetch_youtube_data, extract_full_transcript
 from main.utils.summarizer import summarize_transcript
@@ -410,103 +415,107 @@ class GenerateQuizView(APIView):
     
     def post(self, request):
         print("🚀 Received POST request to /api/generate-quiz/")
-        print("📦 Request data:", request.data)
-        print(f"👤 User: {request.user.email}")
-        
         video_uuid = request.data.get("video_uuid")
         if not video_uuid:
             print("❌ No video_uuid provided")
             return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Получаем видео текущего пользователя
+            # Get video for current user
             video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
             print(f"🎥 Found video: {video.title}")
             
-            # Проверяем, есть ли транскрипт
+            # Check transcript
             if not video.full_transcript or not video.full_transcript.strip():
                 print("❌ No transcript available for this video")
                 return Response({"error": "No transcript available for this video"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Проверяем длительность видео
+            # Check video duration
             if not video.duration_sec or video.duration_sec <= 0:
                 print("❌ Invalid video duration")
                 return Response({"error": "Invalid video duration"}, status=status.HTTP_400_BAD_REQUEST)
             
-            print(f"📝 Video duration: {video.duration_sec} seconds")
-            print(f"📄 Transcript length: {len(video.full_transcript)} characters")
-            
-            # Проверяем существующие квизы и очищаем дубликаты
             try:
-                existing_quizzes = Quiz.objects.filter(quiz_video=video, user=request.user)
+                # Try to get existing quiz or create new one
+                quiz, created = Quiz.objects.get_or_create(
+                    quiz_video=video,
+                    user=request.user,
+                    defaults={
+                        'quiz_json': [],
+                        'questions_count': 0,
+                        'quiz_duration_seconds': video.duration_sec
+                    }
+                )
                 
-                if existing_quizzes.count() > 1:
-                    print(f"🔧 Found {existing_quizzes.count()} duplicate quizzes, cleaning up...")
-                    # Оставляем только первый квиз, остальные удаляем
-                    first_quiz = existing_quizzes.first()
-                    Quiz.objects.filter(quiz_video=video, user=request.user).exclude(id=first_quiz.id).delete()
-                    quiz = first_quiz
-                    created = False
-                elif existing_quizzes.count() == 1:
-                    quiz = existing_quizzes.first()
-                    created = False
-                else:
-                    # Создаем новый квиз
-                    quiz = Quiz.objects.create(
-                        quiz_video=video,
-                        user=request.user,
-                        quiz_json=[],
-                        questions_count=0,
-                        quiz_duration_seconds=video.duration_sec
-                    )
-                    created = True
-                
-                # Если квиз пустой или нужно перегенерировать
+                # Generate new quiz if it's newly created or empty
                 if created or not quiz.quiz_json or len(quiz.quiz_json) == 0:
                     print("🎯 Generating new quiz...")
                     
-                    # Генерируем квиз с помощью AI
+                    # Generate quiz using AI
                     quiz_questions = generate_quiz_from_transcript(
                         transcript=video.full_transcript,
                         duration_seconds=video.duration_sec
                     )
                     
-                    # Сохраняем сгенерированные вопросы
+                    # Save generated questions
                     quiz.quiz_json = quiz_questions
                     quiz.questions_count = len(quiz_questions)
                     quiz.save()
                     
-                    print(f"✅ Successfully generated quiz with {len(quiz_questions)} questions")
-                    
-                    return Response({
-                        "message": "Quiz generated successfully",
-                        "quiz_uuid": str(quiz.uuid_quiz),
-                        "questions_count": len(quiz_questions),
-                        "quiz_data": quiz_questions,
-                        "video_title": video.title,
-                        "created": created
-                    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-                else:
-                    print("📋 Quiz already exists, returning existing quiz")
-                    
-                    return Response({
-                        "message": "Quiz already exists",
-                        "quiz_uuid": str(quiz.uuid_quiz),
-                        "questions_count": len(quiz.quiz_json) if quiz.quiz_json else 0,
-                        "quiz_data": quiz.quiz_json,
-                        "video_title": video.title,
-                        "created": False
-                    }, status=status.HTTP_200_OK)
+                
+                # Serialize quiz data
+                serializer = QuizSerializer(quiz)
+                
+                return Response({
+                    "message": "Quiz generated successfully" if created else "Quiz already exists",
+                    "quiz": serializer.data,
+                    "video_title": video.title,
+                    "created": created
+                }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
                     
             except Exception as quiz_error:
-                print(f"❌ Error with quiz generation: {str(quiz_error)}")
+                print(f"Error with quiz generation: {str(quiz_error)}")
                 return Response({"error": f"Quiz generation failed: {str(quiz_error)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
         except Video.DoesNotExist:
-            print("❌ Video not found or doesn't belong to user")
+            print("Video not found or doesn't belong to user")
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            print(f"❌ Unexpected error: {str(e)}")
+            print(f"Unexpected error: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        """Get existing quiz for a video"""
+        video_uuid = request.query_params.get("video_uuid")
+        
+        if not video_uuid:
+            return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Get video for current user
+            video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
+            
+            # Try to get quiz
+            try:
+                quiz = Quiz.objects.get(quiz_video=video, user=request.user)
+                serializer = QuizSerializer(quiz)
+                
+                return Response({
+                    "message": "Quiz found",
+                    "quiz": serializer.data,
+                    "video_title": video.title
+                }, status=status.HTTP_200_OK)
+                
+            except Quiz.DoesNotExist:
+                return Response({
+                    "message": "Quiz not found",
+                    "video_title": video.title
+                }, status=status.HTTP_404_NOT_FOUND)
+                
+        except Video.DoesNotExist:
+            return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"Error getting quiz: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

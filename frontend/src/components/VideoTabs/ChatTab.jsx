@@ -147,7 +147,6 @@ const ChatTab = ({ video }) => {
     <div className="chat-container">
       {!video?.summary ? (
         <div className="chat-empty-state">
-          <div className="empty-icon">💬</div>
           <h3 className="empty-title">Chat unavailable</h3>
           <p className="empty-description">
             Video summary must be generated first to enable chat functionality.

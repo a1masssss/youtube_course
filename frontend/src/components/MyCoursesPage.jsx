@@ -118,7 +118,6 @@ const MyCoursesPage = () => {
 
       {playlists.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📚</div>
           <h2>No courses yet</h2>
           <p>Start by adding a YouTube playlist on the Home page</p>
           <button 

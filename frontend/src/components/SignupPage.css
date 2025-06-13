@@ -111,6 +111,17 @@
   margin-bottom: 8px;
 }
 
+.success-message {
+  background: #c6f6d5;
+  border: 1px solid #9ae6b4;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  margin-bottom: 8px;
+  color: #22543d;
+  font-weight: 500;
+}
+
 .signup-button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
