@@ -73,10 +73,10 @@ const TranscriptTab = ({ video, isCompact = false }) => {
 
   if (!video?.timecode_transcript || !Array.isArray(video.timecode_transcript) || video.timecode_transcript.length === 0) {
     return (
-      <div className={`transcript-section ${isCompact ? 'compact' : ''}`}>
-        <div className="no-content">
-          <p>Transcript with timecodes is not available for this video.</p>
-          <small>Timecode transcript is generated during video processing.</small>
+      <div className={`transcript-section ${isCompact ? 'transcript-section--compact' : ''}`}>
+        <div className="transcript-empty">
+          <p className="transcript-empty__message">Transcript with timecodes is not available for this video.</p>
+          <small className="transcript-empty__note">Timecode transcript is generated during video processing.</small>
         </div>
       </div>
     );
@@ -85,19 +85,19 @@ const TranscriptTab = ({ video, isCompact = false }) => {
   if (isCompact) {
     return (
       <div className="transcript-compact">
-        <div className="space-y-3">
+        <div className="transcript-compact__segments">
           {filteredTranscript.map((segment, index) => {
             return (
               <div
                 key={index}
-                className="flex items-center gap-3 hover:bg-gray-700/30 p-2 rounded-lg cursor-pointer transition-colors group min-h-[32px]"
+                className="transcript-compact__segment"
                 onClick={() => handleTimestampClick(segment.start)}
               >
-                <div className="flex items-center justify-center px-2 py-1 text-xs bg-blue-600/20 text-blue-400 border border-blue-400/30 rounded flex-shrink-0 h-[22px]" style={{minWidth: '55px', width: '55px', fontFamily: 'Courier New, monospace'}}>
+                <div className="transcript-compact__timestamp">
                   {formatTime(segment.start)}
                 </div>
                 <div 
-                  className="text-gray-300 text-sm leading-relaxed flex-1 m-0 flex items-center min-h-[22px]"
+                  className="transcript-compact__text"
                   dangerouslySetInnerHTML={{
                     __html: processCodeBlocks(segment.text || '')
                   }}
@@ -113,16 +113,16 @@ const TranscriptTab = ({ video, isCompact = false }) => {
   return (
     <div className="transcript-section">
       <div className="transcript-header">
-        <h3>Video Transcript</h3>
+        <h3 className="transcript-header__title">Video Transcript</h3>
         <div className="transcript-search">
           <input
             type="text"
             placeholder="Search in transcript..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+            className="transcript-search__input"
           />
-          <span className="search-results">
+          <span className="transcript-search__results">
             {searchTerm && `${filteredTranscript.length} results`}
           </span>
         </div>
@@ -130,8 +130,8 @@ const TranscriptTab = ({ video, isCompact = false }) => {
 
       <div className="transcript-content">
         {filteredTranscript.length === 0 ? (
-          <div className="no-results">
-            <p>No results found for "{searchTerm}"</p>
+          <div className="transcript-no-results">
+            <p className="transcript-no-results__message">No results found for "{searchTerm}"</p>
           </div>
         ) : (
           <div className="transcript-segments">
@@ -147,14 +147,14 @@ const TranscriptTab = ({ video, isCompact = false }) => {
               return (
                 <div key={index} className="transcript-segment">
                   <button
-                    className="timestamp-button"
+                    className="transcript-segment__timestamp"
                     onClick={() => handleTimestampClick(segment.start)}
                     title="Click to jump to this time in the video"
                   >
                     {formatTime(segment.start)} - {formatTime(endTime)}
                   </button>
                   <div 
-                    className="segment-text"
+                    className="transcript-segment__text"
                     dangerouslySetInnerHTML={{
                       __html: highlightSearchTerm(segment.text || '', searchTerm)
                     }}
@@ -166,8 +166,8 @@ const TranscriptTab = ({ video, isCompact = false }) => {
         )}
       </div>
 
-      <div className="transcript-info">
-        <small>
+      <div className="transcript-footer">
+        <small className="transcript-footer__info">
           Click on any timestamp to jump to that moment in the video. 
           Total segments: {transcriptData.length}
         </small>

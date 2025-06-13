@@ -52,7 +52,7 @@ const HomePage = () => {
       <div className="main-content">
         <div className="form-container">
           <div className="form-header">
-            <h2>Add New Course</h2>
+            <h2>Insert Youtube Playlist Link</h2>
           </div>
           
           <form onSubmit={handleSubmit} className="playlist-form">
@@ -66,7 +66,7 @@ const HomePage = () => {
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/your-link"
+                placeholder="https://youtube.com/playlist?list..."
                 className="playlist-input"
                 disabled={loading}
               />

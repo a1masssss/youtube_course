@@ -36,7 +36,7 @@ const QuizTab = ({ video }) => {
       const data = await response.json();
       
       if (response.ok) {
-        setQuizData(data.quiz_data);
+        setQuizData(data.quiz_data || []);
         setCurrentQuestionIndex(0);
         setSelectedAnswers({});
         setShowResults(false);
@@ -52,45 +52,6 @@ const QuizTab = ({ video }) => {
     }
   }, [video, quizAttempted]);
 
-  const retryLoadQuiz = () => {
-    setQuizAttempted(false);
-    setQuizError(null);
-    loadQuiz();
-  };
-
-  // Quiz answer selection
-  const selectAnswer = (questionIndex, answerIndex) => {
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [questionIndex]: answerIndex
-    }));
-  };
-
-  // Calculate quiz results
-  const calculateResults = () => {
-    if (!quizData) return { score: 0, total: 0, percentage: 0 };
-    
-    let correct = 0;
-    quizData.forEach((question, index) => {
-      if (selectedAnswers[index] === question.correct_index) {
-        correct++;
-      }
-    });
-    
-    return {
-      score: correct,
-      total: quizData.length,
-      percentage: Math.round((correct / quizData.length) * 100)
-    };
-  };
-
-  // Load quiz when component mounts
-  useEffect(() => {
-    if (video && !quizAttempted && !quizLoading) {
-      loadQuiz();
-    }
-  }, [video, quizAttempted, quizLoading, loadQuiz]);
-
   // Reset quiz state when video changes
   useEffect(() => {
     setQuizAttempted(false);
@@ -101,153 +62,202 @@ const QuizTab = ({ video }) => {
     setShowResults(false);
   }, [video?.uuid_video]);
 
-  return (
-    <div className="quiz-section">
-      {quizLoading && (
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <p>Loading quiz...</p>
-          <small>Generating questions based on video content...</small>
-        </div>
-      )}
+  // Load quiz when component mounts
+  useEffect(() => {
+    if (video && !quizAttempted && !quizLoading) {
+      loadQuiz();
+    }
+  }, [video, quizAttempted, quizLoading, loadQuiz]);
 
-      {quizError && (
-        <div className="error-content">
-          <p>❌ Error loading quiz: {quizError}</p>
-          <button className="retry-button" onClick={retryLoadQuiz}>
-            🔄 Try Again
+  if (quizLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner" />
+        <div className="loading-text">Loading quiz...</div>
+      </div>
+    );
+  }
+
+  if (quizError) {
+    return (
+      <div className="quiz-empty">
+        <p>Error loading quiz: {quizError}</p>
+        <button className="control-button" onClick={() => {
+          setQuizAttempted(false);
+          loadQuiz();
+        }}>
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!quizData || !Array.isArray(quizData) || quizData.length === 0) {
+    return (
+      <div className="quiz-empty">
+        <p>No quiz available for this video yet.</p>
+        <small>Quiz will be generated based on video content.</small>
+      </div>
+    );
+  }
+
+  const currentQuestion = quizData[currentQuestionIndex];
+  
+  if (!currentQuestion || !Array.isArray(currentQuestion.answers)) {
+    return (
+      <div className="quiz-empty">
+        <p>Invalid quiz data format.</p>
+        <button className="control-button" onClick={() => {
+          setQuizAttempted(false);
+          loadQuiz();
+        }}>
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  const isLastQuestion = currentQuestionIndex === quizData.length - 1;
+
+  const handleAnswerSelect = (optionIndex) => {
+    if (showResults) return;
+    
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [currentQuestionIndex]: optionIndex
+    });
+  };
+
+  const handleNext = () => {
+    if (isLastQuestion) {
+      setShowResults(true);
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentQuestionIndex(currentQuestionIndex - 1);
+  };
+
+  const calculateScore = () => {
+    let correctAnswers = 0;
+    quizData.forEach((question, index) => {
+      if (selectedAnswers[index] === question.correct_index) {
+        correctAnswers++;
+      }
+    });
+    return {
+      correct: correctAnswers,
+      total: quizData.length,
+      percentage: Math.round((correctAnswers / quizData.length) * 100)
+    };
+  };
+
+  const isAnswerSelected = selectedAnswers[currentQuestionIndex] !== undefined;
+  const selectedAnswer = selectedAnswers[currentQuestionIndex];
+
+  if (showResults) {
+    const score = calculateScore();
+    return (
+      <div className="quiz-container">
+        <div className="quiz-results">
+          <div className="quiz-score">
+            <h2>Quiz Results</h2>
+            <p>Score: {score.correct} out of {score.total} ({score.percentage}%)</p>
+          </div>
+          
+          <div className="quiz-answers">
+            {quizData.map((question, index) => (
+              <div key={index} className="quiz-answer-review">
+                <div className="question-text">
+                  Question {index + 1}: {question.question}
+                </div>
+                <div className="options-container">
+                  {question.answers.map((option, optionIndex) => (
+                    <div
+                      key={optionIndex}
+                      className={`option-button ${
+                        selectedAnswers[index] === optionIndex
+                          ? optionIndex === question.correct_index
+                            ? 'correct'
+                            : 'incorrect'
+                          : optionIndex === question.correct_index
+                          ? 'correct'
+                          : ''
+                      }`}
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            className="control-button"
+            onClick={() => {
+              setQuizAttempted(false);
+              setSelectedAnswers({});
+              setShowResults(false);
+              loadQuiz();
+            }}
+          >
+            Try Again
           </button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {!quizLoading && !quizError && !quizData && (
-        <div className="no-content">
-          <p>No quiz available for this video.</p>
-          <small>Quiz requires video transcript to be available.</small>
-        </div>
-      )}
-
-      {quizData && !showResults && (
-        <div className="quiz-content">
-          <div className="quiz-header">
-            <h3>Quiz: {video?.title}</h3>
-            <div className="quiz-progress">
-              Question {currentQuestionIndex + 1} of {quizData.length}
-            </div>
+  return (
+    <div className="quiz-container">
+      <div className="quiz-content">
+        <div className="question-container">
+          <div className="question-text">
+            {currentQuestion.question}
           </div>
-
-          <div className="quiz-question">
-            <div className="question-text">
-              {quizData[currentQuestionIndex]?.question}
-            </div>
-            
-            <div className="answer-options">
-              {quizData[currentQuestionIndex]?.answers.map((answer, index) => (
-                <div 
-                  key={index}
-                  className={`answer-option ${
-                    selectedAnswers[currentQuestionIndex] === index ? 'selected' : ''
-                  }`}
-                  onClick={() => selectAnswer(currentQuestionIndex, index)}
-                >
-                  <span className="option-letter">{String.fromCharCode(65 + index)}</span>
-                  <span className="option-text">{answer}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="quiz-navigation">
-              <button 
-                className="nav-button"
-                onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentQuestionIndex === 0}
+          <div className="options-container">
+            {currentQuestion.answers.map((option, index) => (
+              <button
+                key={index}
+                className={`option-button ${
+                  selectedAnswer === index ? 'selected' : ''
+                }`}
+                onClick={() => handleAnswerSelect(index)}
+                disabled={showResults}
               >
-                ← Previous
+                {option}
               </button>
-              
-              {currentQuestionIndex < quizData.length - 1 ? (
-                <button 
-                  className="nav-button"
-                  onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
-                  disabled={selectedAnswers[currentQuestionIndex] === undefined}
-                >
-                  Next →
-                </button>
-              ) : (
-                <button 
-                  className="finish-button"
-                  onClick={() => setShowResults(true)}
-                  disabled={Object.keys(selectedAnswers).length !== quizData.length}
-                >
-                  Finish Quiz
-                </button>
-              )}
-            </div>
+            ))}
           </div>
         </div>
-      )}
 
-      {quizData && showResults && (
-        <div className="quiz-results">
-          <div className="results-header">
-            <h3>Quiz Results</h3>
-            <div className="score-display">
-              <div className="score-circle">
-                {calculateResults().percentage}%
-              </div>
-              <div className="score-text">
-                {calculateResults().score} out of {calculateResults().total} correct
-              </div>
-            </div>
+        <div className="quiz-controls">
+          <div className="quiz-progress">
+            Question {currentQuestionIndex + 1} of {quizData.length}
           </div>
-
-          <div className="questions-review">
-            {quizData.map((question, qIndex) => {
-              const userAnswer = selectedAnswers[qIndex];
-              const isCorrect = userAnswer === question.correct_index;
-              
-              return (
-                <div key={qIndex} className={`question-review ${isCorrect ? 'correct' : 'incorrect'}`}>
-                  <div className="review-question">
-                    <span className="question-number">Q{qIndex + 1}:</span>
-                    {question.question}
-                  </div>
-                  <div className="review-answers">
-                    {question.answers.map((answer, aIndex) => (
-                      <div 
-                        key={aIndex} 
-                        className={`review-answer ${
-                          aIndex === question.correct_index ? 'correct-answer' : ''
-                        } ${
-                          aIndex === userAnswer ? 'user-answer' : ''
-                        }`}
-                      >
-                        <span className="option-letter">{String.fromCharCode(65 + aIndex)}</span>
-                        {answer}
-                        {aIndex === question.correct_index && <span className="correct-mark">✓</span>}
-                        {aIndex === userAnswer && aIndex !== question.correct_index && <span className="wrong-mark">✗</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="results-actions">
-            <button 
-              className="retake-button"
-              onClick={() => {
-                setCurrentQuestionIndex(0);
-                setSelectedAnswers({});
-                setShowResults(false);
-              }}
+          <div>
+            {currentQuestionIndex > 0 && (
+              <button
+                className="control-button"
+                onClick={handlePrevious}
+                style={{ marginRight: '1rem' }}
+              >
+                Previous
+              </button>
+            )}
+            <button
+              className="control-button"
+              onClick={handleNext}
+              disabled={!isAnswerSelected}
             >
-              🔄 Retake Quiz
+              {isLastQuestion ? 'Finish' : 'Next'}
             </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

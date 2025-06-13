@@ -61,10 +61,10 @@ const VideoPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A1B] flex items-center justify-center">
-        <div className="text-center">
+      <div className="video-page video-page--loading">
+        <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p className="text-white mt-4">Loading video...</p>
+          <p className="loading-text">Loading video...</p>
         </div>
       </div>
     );
@@ -72,9 +72,9 @@ const VideoPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0A0A1B] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400">Error: {error}</p>
+      <div className="video-page video-page--error">
+        <div className="error-container">
+          <p className="error-message">Error: {error}</p>
         </div>
       </div>
     );
@@ -82,9 +82,9 @@ const VideoPage = () => {
 
   if (!video) {
     return (
-      <div className="min-h-screen bg-[#0A0A1B] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-white">Video not found</p>
+      <div className="video-page video-page--not-found">
+        <div className="not-found-container">
+          <p className="not-found-message">Video not found</p>
         </div>
       </div>
     );
@@ -107,34 +107,30 @@ const VideoPage = () => {
   const embedUrl = getYouTubeEmbedUrl(video?.url);
 
   return (
-    <div className="min-h-screen bg-[#0A0A1B] p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Main Container */}
-        <div className="bg-gray-900/30 rounded-3xl p-8 border border-gray-800">
-          {/* Video Title */}
-          <h1 className="text-2xl font-bold text-white mb-6">{video?.title}</h1>
+    <div className="video-page">
+      <div className="video-page__container">
+        <div className="video-page__content">
+          <h1 className="video-page__title">{video?.title}</h1>
 
-          {/* Top Section: Video + Transcript */}
-          <div className="grid lg:grid-cols-3 gap-6 mb-6">
-            {/* YouTube Video */}
-            <div className="lg:col-span-2">
-              <div className="bg-gray-800/50 rounded-2xl p-1 border border-gray-700">
-                <div className="aspect-video w-full">
+          <div className="video-page__main-section">
+            <div className="video-player">
+              <div className="video-player__wrapper">
+                <div className="video-player__aspect-ratio">
                   {embedUrl ? (
                     <iframe
                       src={embedUrl}
                       title={video?.title}
-                      className="w-full h-full rounded-xl"
+                      className="video-player__iframe"
                       allowFullScreen
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-xl bg-gray-800 flex items-center justify-center">
-                      <div className="text-center">
+                    <div className="video-player__placeholder">
+                      <div className="video-player__placeholder-content">
                         <img 
                           src={video?.thumbnail} 
                           alt={video?.title}
-                          className="max-w-full max-h-full rounded-lg mb-4"
+                          className="video-player__thumbnail"
                           onError={(e) => {
                             e.target.src = 'https://via.placeholder.com/640x360?text=No+Image';
                           }}
@@ -143,7 +139,7 @@ const VideoPage = () => {
                           href={video?.url} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors"
+                          className="video-player__youtube-link"
                         >
                           ▶ Watch on YouTube
                         </a>
@@ -154,77 +150,57 @@ const VideoPage = () => {
               </div>
             </div>
 
-            {/* Transcript */}
-            <div className="lg:col-span-1">
-              <div className="bg-gray-800/50 rounded-2xl p-6 border border-gray-700 h-full">
-                <h3 className="text-lg font-semibold text-white mb-4">Transcript</h3>
-                <div className="h-80 overflow-y-auto">
+            <div className="transcript-panel">
+              <div className="transcript-panel__content">
+                <h3 className="transcript-panel__title">Transcript</h3>
+                <div className="transcript-panel__body">
                   <TranscriptTab video={video} isCompact={true} />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="w-full">
-            {/* Tab Navigation */}
-            <div className="grid grid-cols-5 bg-gray-800/50 border border-gray-700 rounded-2xl p-1 mb-6">
+          <div className="tabs">
+            <div className="tabs__nav">
               <button
                 onClick={() => setActiveTab('summary')}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'summary'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                className={`tabs__button ${activeTab === 'summary' ? 'tabs__button--active' : ''}`}
               >
                 Summary
               </button>
               <button
                 onClick={() => setActiveTab('flashcards')}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'flashcards'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                className={`tabs__button ${activeTab === 'flashcards' ? 'tabs__button--active' : ''}`}
               >
                 Flashcards
               </button>
               <button
                 onClick={() => setActiveTab('mindmap')}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'mindmap'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                className={`tabs__button ${activeTab === 'mindmap' ? 'tabs__button--active' : ''}`}
               >
                 Mindmap
               </button>
               <button
                 onClick={() => setActiveTab('quiz')}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'quiz'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                className={`tabs__button ${activeTab === 'quiz' ? 'tabs__button--active' : ''}`}
               >
                 Quiz
               </button>
               <button
                 onClick={() => setActiveTab('chat')}
-                className={`rounded-xl py-3 px-4 text-sm font-medium transition-all ${
-                  activeTab === 'chat'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                className={`tabs__button ${activeTab === 'chat' ? 'tabs__button--active' : ''}`}
               >
                 Chat
               </button>
             </div>
 
-            {/* Content Area */}
-            <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 min-h-96">
+            <div className="tabs__content">
               {activeTab === 'summary' && <SummaryTab video={video} />}
-              {activeTab === 'flashcards' && <FlashcardsTab video={video} />}
+              {activeTab === 'flashcards' && (
+                <div className="slide-in-right">
+                  <FlashcardsTab video={video} />
+                </div>
+              )}
               {activeTab === 'mindmap' && <MindmapTab video={video} />}
               {activeTab === 'quiz' && <QuizTab video={video} />}
               {activeTab === 'chat' && <ChatTab video={video} />}

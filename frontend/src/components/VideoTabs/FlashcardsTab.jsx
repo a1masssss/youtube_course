@@ -8,8 +8,8 @@ const FlashcardsTab = ({ video }) => {
   const [flashcardsLoading, setFlashcardsLoading] = useState(false);
   const [flashcardsError, setFlashcardsError] = useState(null);
   const [flashcardsAttempted, setFlashcardsAttempted] = useState(false);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   // Load flashcards
   const loadFlashcards = useCallback(async () => {
@@ -36,8 +36,8 @@ const FlashcardsTab = ({ video }) => {
       
       if (response.ok) {
         setFlashcards(data.flashcards || []);
-        setCurrentCardIndex(0);
-        setShowAnswer(false);
+        setCurrentIndex(0);
+        setIsFlipped(false);
         console.log('✅ Flashcards loaded/generated successfully:', data);
       } else {
         throw new Error(data.error || 'Failed to load flashcards');
@@ -50,28 +50,18 @@ const FlashcardsTab = ({ video }) => {
     }
   }, [video, flashcardsAttempted]);
 
-  const retryLoadFlashcards = () => {
-    setFlashcardsAttempted(false);
-    setFlashcardsError(null);
-    loadFlashcards();
+  const handleNext = () => {
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev + 1) % flashcards.length);
   };
 
-  const nextCard = () => {
-    if (currentCardIndex < flashcards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-      setShowAnswer(false);
-    }
+  const handlePrevious = () => {
+    setIsFlipped(false);
+    setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
   };
 
-  const prevCard = () => {
-    if (currentCardIndex > 0) {
-      setCurrentCardIndex(currentCardIndex - 1);
-      setShowAnswer(false);
-    }
-  };
-
-  const toggleAnswer = () => {
-    setShowAnswer(!showAnswer);
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
   };
 
   // Auto-load flashcards when component mounts
@@ -86,90 +76,84 @@ const FlashcardsTab = ({ video }) => {
     setFlashcardsAttempted(false);
     setFlashcards([]);
     setFlashcardsError(null);
-    setCurrentCardIndex(0);
-    setShowAnswer(false);
+    setCurrentIndex(0);
+    setIsFlipped(false);
   }, [video?.uuid_video]);
 
+  if (flashcardsLoading) {
+    return (
+      <div className="flashcards-empty">
+        <div className="loading-spinner" />
+        <p>Loading flashcards...</p>
+      </div>
+    );
+  }
+
+  if (flashcardsError) {
+    return (
+      <div className="flashcards-empty">
+        <p>Error loading flashcards: {flashcardsError}</p>
+        <button 
+          className="control-button" 
+          onClick={() => {
+            setFlashcardsAttempted(false);
+            loadFlashcards();
+          }}
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!flashcards || flashcards.length === 0) {
+    return (
+      <div className="flashcards-empty">
+        <p>No flashcards available for this video yet.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flashcards-section">
-      {flashcardsLoading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading flashcards...</p>
-          <small>Generating flashcards based on video content...</small>
-        </div>
-      )}
+    <div className="flashcards-container">
+      <div className="flashcard-progress">
+        {currentIndex + 1} / {flashcards.length}
+      </div>
       
-      {flashcardsError && (
-        <div className="no-content">
-          <p>❌ Error loading flashcards: {flashcardsError}</p>
-          <div className="flashcard-buttons">
-            <button 
-              onClick={retryLoadFlashcards}
-              disabled={flashcardsLoading}
-              className="retry-button"
-            >
-              🔄 Try Again
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {!flashcardsLoading && !flashcardsError && flashcards.length === 0 && (
-        <div className="no-content">
-          <p>No flashcards available for this video.</p>
-          <small>Flashcards require video transcript to be available.</small>
-        </div>
-      )}
-      
-      {!flashcardsLoading && flashcards.length > 0 && (
-        <div className="flashcards-container">
-          <div className="flashcard-header">
-            <div className="flashcard-progress">
-              Card {currentCardIndex + 1} of {flashcards.length}
+      <div 
+        className={`flashcard ${isFlipped ? 'is-flipped' : ''}`} 
+        onClick={handleFlip}
+      >
+        <div className="flashcard-inner">
+          <div className="flashcard-front">
+            <div className="flashcard-content">
+              {flashcards[currentIndex].question}
             </div>
           </div>
-          
-          <div className="flashcard-content">
-            <div className="flashcard-front">
-              <strong>Question:</strong><br />
-              {flashcards[currentCardIndex]?.question}
+          <div className="flashcard-back">
+            <div className="flashcard-content">
+              {flashcards[currentIndex].answer}
             </div>
-            
-            {showAnswer && (
-              <div className="flashcard-back">
-                <strong>Answer:</strong><br />
-                {flashcards[currentCardIndex]?.answer}
-              </div>
-            )}
-          </div>
-          
-          <div className="flashcard-controls">
-            <button 
-              onClick={prevCard}
-              disabled={currentCardIndex === 0}
-              className="flashcard-control prev"
-            >
-              ← Prev
-            </button>
-            
-            <button 
-              onClick={toggleAnswer}
-              className="flashcard-control toggle"
-            >
-              {showAnswer ? 'Hide Answer' : 'Show Answer'}
-            </button>
-            
-            <button 
-              onClick={nextCard}
-              disabled={currentCardIndex === flashcards.length - 1}
-              className="flashcard-control next"
-            >
-              Next →
-            </button>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="flashcard-controls">
+        <button 
+          className="control-button"
+          onClick={handlePrevious}
+          disabled={flashcards.length <= 1}
+        >
+          Previous
+        </button>
+        <button 
+          className="control-button"
+          onClick={handleNext}
+          disabled={flashcards.length <= 1}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };
