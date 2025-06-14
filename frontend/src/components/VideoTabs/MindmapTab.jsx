@@ -114,13 +114,7 @@ const MindmapTab = ({ video }) => {
 
   return (
     <div className="mindmap-section">
-      {mindmapLoading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading mind map...</p>
-          <small>Creating visual representation of video content...</small>
-        </div>
-      )}
+      {/* Loading silently in background during generation */}
       
       {mindmapError && (
         <div className="mindmap-error">

@@ -6,6 +6,7 @@ from groq import Groq
 from openai import OpenAI
 from dotenv import load_dotenv
 from .prompts.quiz_prompt import generate_quiz_prompt
+import re
 
 load_dotenv()
 
@@ -64,16 +65,97 @@ def generate_quiz_from_transcript(transcript: str, duration_seconds: int) -> Lis
     
     def clean_json_response(response_text: str) -> str:
         """Clean up potential JSON formatting issues"""
-        # Try to find JSON array bounds
+        
+        
+        # First, try to find a complete JSON array
         start_idx = response_text.find('[')
         end_idx = response_text.rfind(']')
         
-        if start_idx == -1 or end_idx == -1:
-            raise ValueError("No JSON array found in response")
+        if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+            # Extract just the JSON array
+            json_text = response_text[start_idx:end_idx + 1]
+            try:
+                # Test if it's valid JSON
+                json.loads(json_text)
+                return json_text
+            except json.JSONDecodeError:
+                pass
+        
+        # If no valid JSON array found, try to extract numbered JSON objects
+        # Split by lines and look for numbered entries
+        lines = response_text.split('\n')
+        json_objects = []
+        current_json = ""
+        in_json = False
+        brace_count = 0
+        
+        for line in lines:
+            line = line.strip()
             
-        # Extract just the JSON array
-        json_text = response_text[start_idx:end_idx + 1]
-        return json_text
+            # Check if this line starts a new numbered JSON object
+            if re.match(r'^\d+\.\s*\{', line):
+                # If we were building a JSON object, try to parse it
+                if current_json and in_json:
+                    try:
+                        obj = json.loads(current_json)
+                        if all(key in obj for key in ['question', 'answers', 'correct_index']):
+                            json_objects.append(obj)
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Start new JSON object (remove the number prefix)
+                current_json = re.sub(r'^\d+\.\s*', '', line)
+                in_json = True
+                brace_count = current_json.count('{') - current_json.count('}')
+                
+            elif in_json:
+                # Continue building the current JSON object
+                current_json += '\n' + line
+                brace_count += line.count('{') - line.count('}')
+                
+                # If braces are balanced, we might have a complete object
+                if brace_count == 0:
+                    try:
+                        obj = json.loads(current_json)
+                        if all(key in obj for key in ['question', 'answers', 'correct_index']):
+                            json_objects.append(obj)
+                    except json.JSONDecodeError:
+                        pass
+                    
+                    current_json = ""
+                    in_json = False
+        
+        # Handle the last object if we were still building one
+        if current_json and in_json:
+            try:
+                obj = json.loads(current_json)
+                if all(key in obj for key in ['question', 'answers', 'correct_index']):
+                    json_objects.append(obj)
+            except json.JSONDecodeError:
+                pass
+        
+        if json_objects:
+            return json.dumps(json_objects)
+        
+        # Fallback: try to find any JSON objects in the text
+        json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+        json_matches = re.findall(json_pattern, response_text, re.DOTALL)
+        
+        if json_matches:
+            valid_objects = []
+            for match in json_matches:
+                try:
+                    obj = json.loads(match.strip())
+                    # Validate it has the required fields
+                    if all(key in obj for key in ['question', 'answers', 'correct_index']):
+                        valid_objects.append(obj)
+                except json.JSONDecodeError:
+                    continue
+            
+            if valid_objects:
+                return json.dumps(valid_objects)
+        
+        raise ValueError("No valid JSON objects found in response")
     
     # Try Groq first
     try:

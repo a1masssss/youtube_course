@@ -137,11 +137,26 @@ class UserProfileView(APIView):
     
     def get(self, request):
         user = request.user
+        
+        # Try to get Google profile picture from social account
+        picture_url = None
+        try:
+            social_account = SocialAccount.objects.filter(
+                user=user, 
+                provider='google'
+            ).first()
+            
+            if social_account and social_account.extra_data:
+                picture_url = social_account.extra_data.get('picture')
+        except Exception as e:
+            logger.warning(f"Could not retrieve social account picture: {e}")
+        
         return Response({
             'id': user.id,
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'picture': picture_url,
         })
 
 class RefreshTokenView(APIView):
@@ -176,6 +191,19 @@ class GoogleOAuthCallbackView(APIView):
             if request.user.is_authenticated:
                 logger.info(f"✅ User is authenticated: {request.user.email}")
                 
+                # Get Google profile picture
+                picture_url = None
+                try:
+                    social_account = SocialAccount.objects.filter(
+                        user=request.user, 
+                        provider='google'
+                    ).first()
+                    
+                    if social_account and social_account.extra_data:
+                        picture_url = social_account.extra_data.get('picture')
+                except Exception as e:
+                    logger.warning(f"Could not retrieve social account picture: {e}")
+                
                 # Generate JWT tokens for the user
                 refresh = RefreshToken.for_user(request.user)
                 access_token = str(refresh.access_token)
@@ -190,6 +218,7 @@ class GoogleOAuthCallbackView(APIView):
                         'email': request.user.email,
                         'first_name': request.user.first_name,
                         'last_name': request.user.last_name,
+                        'picture': picture_url,
                     }
                 }, status=200)
             else:

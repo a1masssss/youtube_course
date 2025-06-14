@@ -86,10 +86,7 @@ const MyCoursesPage = () => {
   if (loading) {
     return (
       <div className="my-courses-page">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading your courses...</p>
-        </div>
+        {/* Loading silently in background */}
       </div>
     );
   }

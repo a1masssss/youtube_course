@@ -17,11 +17,44 @@
   border: 1px solid rgb(31, 41, 55);
 }
 
+.video-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
 .video-page__title {
   font-size: 1.5rem;
   font-weight: 700;
   color: white;
-  margin-bottom: 1.5rem;
+  margin: 0;
+}
+
+.video-page__back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(55, 65, 81, 0.8);
+  color: #e2e8f0;
+  border: 1px solid rgba(75, 85, 99, 0.6);
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.video-page__back-button:hover {
+  background-color: rgba(75, 85, 99, 0.8);
+  color: white;
+  border-color: rgba(107, 114, 128, 0.8);
+  transform: translateY(-1px);
+}
+
+.video-page__back-button:active {
+  transform: translateY(0);
 }
 
 .video-page__main-section {
@@ -165,8 +198,7 @@
   min-height: 24rem;
 }
 
-/* Loading States */
-.video-page--loading,
+/* Error and Not Found States */
 .video-page--error,
 .video-page--not-found {
   display: flex;
@@ -174,25 +206,9 @@
   justify-content: center;
 }
 
-.loading-container,
 .error-container,
 .not-found-container {
   text-align: center;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left: 4px solid #3b82f6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-.loading-text {
-  color: white;
-  margin-top: 1rem;
 }
 
 .error-message {
@@ -201,11 +217,6 @@
 
 .not-found-message {
   color: white;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 /* Animations */
@@ -265,8 +276,20 @@
     padding: 1.5rem;
   }
   
+  .video-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
   .video-page__title {
     font-size: 1.25rem;
+  }
+  
+  .video-page__back-button {
+    align-self: flex-start;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.8125rem;
   }
   
   .tabs__nav {

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
 import './VideoPage.css';
 import { SummaryTab, QuizTab, ChatTab, FlashcardsTab, MindmapTab, TranscriptTab } from './VideoTabs';
 
 const VideoPage = () => {
-  const { videoUuid } = useParams();
+  const { playlistUuid, videoUuid } = useParams();
+  const navigate = useNavigate();
   
   // Video state
   const [video, setVideo] = useState(null);
@@ -63,11 +64,8 @@ const VideoPage = () => {
 
   if (loading) {
     return (
-      <div className="video-page video-page--loading">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Loading video...</p>
-        </div>
+      <div className="video-page">
+        {/* Loading silently in background */}
       </div>
     );
   }
@@ -108,11 +106,27 @@ const VideoPage = () => {
 
   const embedUrl = getYouTubeEmbedUrl(video?.url);
 
+  const handleBackToCourse = () => {
+    if (playlistUuid) {
+      navigate(`/${playlistUuid}`);
+    } else {
+      navigate('/my-courses');
+    }
+  };
+
   return (
     <div className="video-page">
       <div className="video-page__container">
         <div className="video-page__content">
-          <h1 className="video-page__title">{video?.title}</h1>
+          <div className="video-page__header">
+            <h1 className="video-page__title">{video?.title}</h1>
+            <button 
+              onClick={handleBackToCourse}
+              className="video-page__back-button"
+            >
+              ← Back to Course
+            </button>
+          </div>
 
           <div className="video-page__main-section">
             <div className="video-player">

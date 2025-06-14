@@ -18,7 +18,7 @@ urlpatterns = [
     path('flashcards/', GenerateFlashCardsView.as_view(), name="flashcards"),   
     path('mindmap/', GenerateMindMapView.as_view(), name="mindmap"),
     path('quiz/', GenerateQuizView.as_view(), name="quiz"),
-
+    
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

@@ -13,7 +13,14 @@ Instructions:
 - Avoid generic questions that could apply to any content
 - Make incorrect answers believable but clearly wrong to someone who understood the content
 
-Output format (valid JSON only):
+CRITICAL: Your response must be ONLY a valid JSON array. Do not include:
+- Explanatory text before or after the JSON
+- Numbered lists (1., 2., 3., etc.)
+- Any commentary or descriptions
+- Line breaks between objects
+- Any text other than the JSON array
+
+Output format (valid JSON array only):
 [
   {{
     "question": "What specific concept was explained in the video regarding...?",
@@ -28,7 +35,8 @@ Output format (valid JSON only):
 ]
 
 Requirements:
-- Return ONLY valid JSON, no explanations or additional text
+- Return ONLY the JSON array, nothing else
+- Start your response with [ and end with ]
 - Questions must be specific to the transcript content
 - Answers should be concise but clear
 - Ensure variety in question types (what, how, why, when, etc.)

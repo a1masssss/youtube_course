@@ -35,9 +35,8 @@ const PlaylistPage = () => {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading playlist...</p>
+      <div className="playlist-page">
+        {/* Loading silently in background */}
       </div>
     );
   }
@@ -46,9 +45,6 @@ const PlaylistPage = () => {
     return (
       <div className="error-container">
         <div className="error-message">{error}</div>
-        <button onClick={() => navigate('/')} className="back-button">
-          Back to Home
-        </button>
       </div>
     );
   }
@@ -56,10 +52,6 @@ const PlaylistPage = () => {
   return (
     <div className="playlist-page">
       <div className="playlist-header">
-        <button onClick={() => navigate('/')} className="back-button">
-          ← Back to Home
-        </button>
-        
         <div className="playlist-info">
           <h2>{playlist?.title}</h2>
         </div>

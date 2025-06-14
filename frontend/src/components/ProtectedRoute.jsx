@@ -13,10 +13,8 @@ const ProtectedRoute = ({ children }) => {
         justifyContent: 'center',
         alignItems: 'center',
         height: '50vh',
-        color: '#667eea',
-        fontSize: '18px'
+        backgroundColor: '#0A0A1B'
       }}>
-        Loading...
       </div>
     );
   }
