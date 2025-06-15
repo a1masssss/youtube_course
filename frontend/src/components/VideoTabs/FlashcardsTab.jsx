@@ -64,21 +64,22 @@ const FlashcardsTab = ({ video }) => {
     setIsFlipped(!isFlipped);
   };
 
-  // Auto-load flashcards when component mounts
+  // Load flashcards when video changes
   useEffect(() => {
-    if (video && !flashcardsAttempted && !flashcardsLoading) {
-      loadFlashcards();
-    }
-  }, [video, flashcardsAttempted, flashcardsLoading, loadFlashcards]);
-
-  // Reset flashcards state when video changes
-  useEffect(() => {
+    if (!video?.uuid_video) return;
+    
+    // Reset state
     setFlashcardsAttempted(false);
     setFlashcards([]);
     setFlashcardsError(null);
     setCurrentIndex(0);
     setIsFlipped(false);
-  }, [video?.uuid_video]);
+    
+    // Load flashcards
+    if (!flashcardsLoading) {
+      loadFlashcards();
+    }
+  }, [video?.uuid_video, loadFlashcards]);
 
   if (flashcardsLoading) {
     return (

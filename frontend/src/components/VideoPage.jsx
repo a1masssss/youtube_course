@@ -19,6 +19,7 @@ const VideoPage = () => {
   // Load video data
   useEffect(() => {
     let isMounted = true;
+    let abortController = new AbortController();
 
     const loadVideo = async () => {
       if (!videoUuid) return;
@@ -31,7 +32,8 @@ const VideoPage = () => {
         const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.video(videoUuid)}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
-          }
+          },
+          signal: abortController.signal
         });
 
         if (!isMounted) return;
@@ -44,6 +46,10 @@ const VideoPage = () => {
           setError('Failed to load video');
         }
       } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Request was aborted');
+          return;
+        }
         if (isMounted) {
           console.error('Error loading video:', error);
           setError(error.message);
@@ -59,6 +65,7 @@ const VideoPage = () => {
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
   }, [videoUuid]);
 

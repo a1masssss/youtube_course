@@ -22,7 +22,9 @@ const PlaylistPage = () => {
       fetchingRef.current = true;
       
       try {
-        const response = await apiClient.get(API_ENDPOINTS.getPlaylist(playlistUuid));
+        // Use lightweight endpoint for faster loading
+        const response = await apiClient.get(API_ENDPOINTS.getPlaylistVideosList(playlistUuid));
+        console.log('📋 Lightweight playlist data loaded:', response.data);
         setPlaylist(response.data);
       } catch (error) {
         console.error('Error fetching playlist:', error);

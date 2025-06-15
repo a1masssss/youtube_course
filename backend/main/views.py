@@ -14,6 +14,7 @@ from .serializers import (
     PlaylistSerializer,
     VideoSerializer,
     PlaylistWithVideosSerializer,
+    PlaylistWithVideoListSerializer,
     QuizSerializer
 )
 from main.utils.extractor_ids import fetch_playlist_info, fetch_playlist_videos
@@ -136,7 +137,6 @@ class PlaylistAPIView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class PlaylistDetailAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -146,6 +146,15 @@ class PlaylistDetailAPIView(APIView):
         serializer = PlaylistWithVideosSerializer(playlist)
         return Response(serializer.data)
 
+
+class PlaylistVideosListAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, playlist_uuid):
+        playlist = get_object_or_404(Playlist, uuid_playlist=playlist_uuid, user=request.user)
+        serializer = PlaylistWithVideoListSerializer(playlist)
+        return Response(serializer.data)
 
 
 class VideoDetailAPIView(APIView):
@@ -182,7 +191,6 @@ class MyCourseDeleteAPIView(APIView):
         playlist = get_object_or_404(Playlist, id=playlist_id, user=request.user)
         playlist.delete()
         return Response({"message": "Playlist deleted successfully"}, status=status.HTTP_200_OK)
-
 
 
 
@@ -233,21 +241,13 @@ class SummaryChatbotAPIView(APIView):
 
 
 
-
 class GenerateFlashCardsView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        print("🚀 Received POST request to /api/flashcards/")
-        print("📦 Request data:", request.data)
-        print(f"👤 User: {request.user.email}")
-        
+        print("Received POST request to /api/flashcards/")
         video_uuid = request.data.get("video_uuid")
-        
-        if not video_uuid:
-            print("❌ No video_uuid provided")
-            return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             # Получаем видео текущего пользователя
@@ -404,9 +404,6 @@ class GenerateMindMapView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
    
-
-
-
 
 
 class GenerateQuizView(APIView):

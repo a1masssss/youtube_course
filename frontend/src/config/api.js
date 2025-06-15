@@ -86,6 +86,7 @@ export const API_ENDPOINTS = {
 
   // Helper functions
   getPlaylist: (playlistUuid) => `/playlists/${playlistUuid}/`,
+  getPlaylistVideosList: (playlistUuid) => `/playlists/${playlistUuid}/videos/`,
   video: (videoUuid) => `/videos/${videoUuid}/`,
 };
 

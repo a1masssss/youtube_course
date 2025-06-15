@@ -1,6 +1,6 @@
 from django.urls import path
 
-from main.views import GenerateQuizView, MyCoursesAPIView, MyCourseDeleteAPIView, PlaylistAPIView, PlaylistDetailAPIView, SummaryChatbotAPIView, VideoDetailAPIView, GenerateFlashCardsView, GenerateMindMapView, SubmitQuizResultsView
+from main.views import GenerateQuizView, MyCoursesAPIView, MyCourseDeleteAPIView, PlaylistAPIView, PlaylistDetailAPIView, PlaylistVideosListAPIView, SummaryChatbotAPIView, VideoDetailAPIView, GenerateFlashCardsView, GenerateMindMapView, SubmitQuizResultsView
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
 urlpatterns = [
     path('playlists/', PlaylistAPIView.as_view(), name="create_playlist"), 
     path('playlists/<uuid:playlist_uuid>/', PlaylistDetailAPIView.as_view(), name="get_playlist"),
+    path('playlists/<uuid:playlist_uuid>/videos/', PlaylistVideosListAPIView.as_view(), name="playlist_videos_list"),
     path('videos/<uuid:video_uuid>/', VideoDetailAPIView.as_view(), name="get_video"),
 
     path('my-courses/', MyCoursesAPIView.as_view(), name="my_courses"),
