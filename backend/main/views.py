@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
 from django.http import Http404, StreamingHttpResponse
+from django.utils import timezone
 
 from main.utils.summary_chatbot import summary_chatbot
 
@@ -127,7 +128,6 @@ class PlaylistAPIView(APIView):
                     duration_sec=duration_sec,
                     user=request.user
                 )
-
             serializer = PlaylistSerializer(playlist)
             print("✅ Successfully created playlist:", serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -500,11 +500,24 @@ class GenerateQuizView(APIView):
                 quiz = Quiz.objects.get(quiz_video=video, user=request.user)
                 serializer = QuizSerializer(quiz)
                 
-                return Response({
+                response_data = {
                     "message": "Quiz found",
                     "quiz": serializer.data,
                     "video_title": video.title
-                }, status=status.HTTP_200_OK)
+                }
+                
+                # Add completion information if quiz is completed
+                if quiz.is_completed:
+                    response_data["completion"] = {
+                        "is_completed": True,
+                        "completed_at": quiz.created_at,
+                        "score_percentage": quiz.score_percentage,
+                        "correct_answers_count": quiz.correct_answers_count,
+                        "total_questions": quiz.questions_count,
+                        "user_answers": quiz.user_answers
+                    }
+                
+                return Response(response_data, status=status.HTTP_200_OK)
                 
             except Quiz.DoesNotExist:
                 return Response({
@@ -516,6 +529,88 @@ class GenerateQuizView(APIView):
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             print(f"Error getting quiz: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SubmitQuizResultsView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Save quiz completion results"""
+        print("🚀 Received POST request to /api/quiz/submit/")
+        
+        video_uuid = request.data.get("video_uuid")
+        user_answers = request.data.get("user_answers")  # List of user answers
+        
+        if not video_uuid:
+            return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user_answers or not isinstance(user_answers, list):
+            return Response({"error": "user_answers is required and must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Get video for current user
+            video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
+            
+            # Get quiz for this video
+            quiz = get_object_or_404(Quiz, quiz_video=video, user=request.user)
+            
+            if not quiz.quiz_json or len(quiz.quiz_json) == 0:
+                return Response({"error": "Quiz has no questions"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Calculate results
+            total_questions = len(quiz.quiz_json)
+            correct_answers = 0
+            processed_answers = []
+            
+            for i, user_answer in enumerate(user_answers):
+                if i >= total_questions:
+                    break
+                    
+                question = quiz.quiz_json[i]
+                is_correct = user_answer == question.get('correct_index')
+                
+                if is_correct:
+                    correct_answers += 1
+                
+                processed_answers.append({
+                    "question_index": i,
+                    "selected_answer": user_answer,
+                    "is_correct": is_correct,
+                    "correct_answer": question.get('correct_index')
+                })
+            
+            # Calculate score percentage
+            score_percentage = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+            
+            # Update quiz with results
+            quiz.is_completed = True
+            quiz.score_percentage = score_percentage
+            quiz.correct_answers_count = correct_answers
+            quiz.user_answers = processed_answers
+            quiz.save()
+            
+            print(f"✅ Quiz results saved: {correct_answers}/{total_questions} ({score_percentage:.1f}%)")
+            
+            return Response({
+                "message": "Quiz results saved successfully",
+                "results": {
+                    "total_questions": total_questions,
+                    "correct_answers": correct_answers,
+                    "score_percentage": round(score_percentage, 1),
+                    "is_completed": True,
+                    "completed_at": quiz.created_at,
+                    "user_answers": processed_answers
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Video.DoesNotExist:
+            return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Quiz.DoesNotExist:
+            return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"❌ Error saving quiz results: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

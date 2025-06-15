@@ -10,6 +10,8 @@ const QuizTab = ({ video }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
+  const [quizCompleted, setQuizCompleted] = useState(false);
+  const [savedResults, setSavedResults] = useState(null);
   
   // Ref to prevent double requests
   const initialFetchDone = useRef(false);
@@ -35,6 +37,8 @@ const QuizTab = ({ video }) => {
       if (response.status === 404) {
         // Quiz not found - clear data to show generate button
         setQuizData(null);
+        setQuizCompleted(false);
+        setSavedResults(null);
         return;
       }
 
@@ -42,6 +46,26 @@ const QuizTab = ({ video }) => {
       
       if (response.ok) {
         setQuizData(data.quiz.quiz_json || []);
+        
+        // Check if quiz is completed
+        if (data.completion && data.completion.is_completed) {
+          setQuizCompleted(true);
+          setSavedResults(data.completion);
+          setShowResults(true);
+          
+          // Reconstruct selected answers from saved results
+          const reconstructedAnswers = {};
+          if (data.completion.user_answers) {
+            data.completion.user_answers.forEach(answer => {
+              reconstructedAnswers[answer.question_index] = answer.selected_answer;
+            });
+            setSelectedAnswers(reconstructedAnswers);
+          }
+        } else {
+          setQuizCompleted(false);
+          setSavedResults(null);
+        }
+        
         console.log('✅ Quiz loaded successfully:', data);
       } else {
         throw new Error(data.error || 'Failed to load quiz');
@@ -81,6 +105,8 @@ const QuizTab = ({ video }) => {
         setCurrentQuestionIndex(0);
         setSelectedAnswers({});
         setShowResults(false);
+        setQuizCompleted(false);
+        setSavedResults(null);
         console.log('✅ Quiz generated successfully:', data);
       } else {
         throw new Error(data.error || 'Failed to generate quiz');
@@ -93,6 +119,45 @@ const QuizTab = ({ video }) => {
     }
   }, [video?.uuid_video]);
 
+  // Submit quiz results
+  const submitQuizResults = useCallback(async (answers) => {
+    if (!video?.uuid_video || !answers) return;
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      // Convert answers object to array
+      const userAnswersArray = [];
+      for (let i = 0; i < quizData.length; i++) {
+        userAnswersArray.push(answers[i] !== undefined ? answers[i] : -1);
+      }
+      
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ_SUBMIT}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          video_uuid: video.uuid_video,
+          user_answers: userAnswersArray
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setQuizCompleted(true);
+        setSavedResults(data.results);
+        console.log('✅ Quiz results saved successfully:', data);
+      } else {
+        console.error('❌ Failed to save quiz results:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ Error submitting quiz results:', error);
+    }
+  }, [video?.uuid_video, quizData]);
+
   // Reset state and load quiz when video changes
   useEffect(() => {
     const videoId = video?.uuid_video;
@@ -102,6 +167,8 @@ const QuizTab = ({ video }) => {
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
     setShowResults(false);
+    setQuizCompleted(false);
+    setSavedResults(null);
     
     // Prevent double fetch in development mode
     if (!initialFetchDone.current) {
@@ -174,6 +241,10 @@ const QuizTab = ({ video }) => {
   const handleNext = () => {
     if (isLastQuestion) {
       setShowResults(true);
+      // Submit quiz results when completing the quiz
+      if (!quizCompleted) {
+        submitQuizResults(selectedAnswers);
+      }
     } else {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
@@ -184,6 +255,15 @@ const QuizTab = ({ video }) => {
   };
 
   const calculateScore = () => {
+    // Use saved results if available, otherwise calculate from current answers
+    if (savedResults) {
+      return {
+        correct: savedResults.correct_answers_count,
+        total: savedResults.total_questions,
+        percentage: parseFloat(savedResults.score_percentage).toFixed(1)
+      };
+    }
+    
     let correctAnswers = 0;
     quizData.forEach((question, index) => {
       if (selectedAnswers[index] === question.correct_index) {
@@ -193,7 +273,7 @@ const QuizTab = ({ video }) => {
     return {
       correct: correctAnswers,
       total: quizData.length,
-      percentage: Math.round((correctAnswers / quizData.length) * 100)
+      percentage: ((correctAnswers / quizData.length) * 100).toFixed(1)
     };
   };
 
@@ -207,6 +287,11 @@ const QuizTab = ({ video }) => {
           <div className="quiz-score">
             <h2>Quiz Results</h2>
             <p>Score: {score.correct} out of {score.total} ({score.percentage}%)</p>
+            {quizCompleted && savedResults && (
+              <p className="completion-info">
+                Completed on: {new Date(savedResults.completed_at).toLocaleDateString()}
+              </p>
+            )}
           </div>
           
           <div className="quiz-answers">
@@ -237,16 +322,39 @@ const QuizTab = ({ video }) => {
             ))}
           </div>
           
-          <button
-            className="control-button"
-            onClick={() => {
-              setSelectedAnswers({});
-              setShowResults(false);
-              setCurrentQuestionIndex(0);
-            }}
-          >
-            Try Again
-          </button>
+          {!quizCompleted && (
+            <button
+              className="control-button"
+              onClick={() => {
+                setSelectedAnswers({});
+                setShowResults(false);
+                setCurrentQuestionIndex(0);
+              }}
+            >
+              Try Again
+            </button>
+          )}
+          
+          {quizCompleted && (
+            <div className="quiz-completed-actions">
+              <p className="completion-message">
+                ✅ Quiz completed and results saved!
+              </p>
+              <button
+                className="control-button"
+                onClick={() => {
+                  setSelectedAnswers({});
+                  setShowResults(false);
+                  setCurrentQuestionIndex(0);
+                  setQuizCompleted(false);
+                  setSavedResults(null);
+                  generateQuiz();
+                }}
+              >
+                Generate New Quiz
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

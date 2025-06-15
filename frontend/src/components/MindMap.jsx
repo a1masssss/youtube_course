@@ -14,56 +14,66 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import './MindMap.css';
 
-// Define node types outside component to avoid React Flow warnings
+// Custom Node Components with amazing design
+const RootNode = ({ data, selected }) => (
+  <div className={`mindmap-node root-node ${selected ? 'selected' : ''}`}>
+    <Handle
+      type="source"
+      position={Position.Bottom}
+      id="root-source"
+      className="custom-handle root-handle"
+    />
+    <div className="node-content root-content">
+      <div className="node-text">{data.label}</div>
+      <div className="node-glow"></div>
+    </div>
+  </div>
+);
+
+const CategoryNode = ({ data, selected }) => (
+  <div className={`mindmap-node category-node ${selected ? 'selected' : ''}`}>
+    <Handle
+      type="target"
+      position={Position.Top}
+      id="category-target"
+      className="custom-handle category-handle"
+    />
+    <div className="node-content category-content">
+      <div className="node-text">{data.label}</div>
+      <div className="node-pulse"></div>
+    </div>
+    <Handle
+      type="source"
+      position={Position.Bottom}
+      id="category-source"
+      className="custom-handle category-handle"
+    />
+  </div>
+);
+
+const SubtopicNode = ({ data, selected }) => (
+  <div className={`mindmap-node subtopic-node ${selected ? 'selected' : ''}`}>
+    <Handle
+      type="target"
+      position={Position.Top}
+      id="subtopic-target"
+      className="custom-handle subtopic-handle"
+    />
+    <div className="node-content subtopic-content">
+      <div className="node-text">{data.label}</div>
+      <div className="node-shimmer"></div>
+    </div>
+  </div>
+);
+
+// Define node types with proper React components
 const nodeTypes = {
-  root: ({ data }) => (
-    <div className="mindmap-node root-node">
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="root-source"
-        style={{ background: '#5a6fd8' }}
-      />
-      <div className="node-content">
-        <strong>{data.label}</strong>
-      </div>
-    </div>
-  ),
-  category: ({ data }) => (
-    <div className="mindmap-node category-node">
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="category-target"
-        style={{ background: '#0d7377' }}
-      />
-      <div className="node-content">
-        {data.label}
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="category-source"
-        style={{ background: '#0d7377' }}
-      />
-    </div>
-  ),
-  subtopic: ({ data }) => (
-    <div className="mindmap-node subtopic-node">
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="subtopic-target"
-        style={{ background: '#ff6b6b' }}
-      />
-      <div className="node-content">
-        {data.label}
-      </div>
-    </div>
-  ),
+  root: RootNode,
+  category: CategoryNode,
+  subtopic: SubtopicNode,
 };
 
-// Define edge types outside component
+// Custom edge types for better animations
 const edgeTypes = {};
 
 const MindMap = ({ mindmapData }) => {
@@ -80,61 +90,45 @@ const MindMap = ({ mindmapData }) => {
     const edges = [];
     let nodeId = 0;
 
-    // Create root node
+    // Create root node with enhanced positioning
     const rootId = `node-${nodeId++}`;
     nodes.push({
       id: rootId,
       type: 'root',
-      position: { x: 400, y: 50 },
+      position: { x: 400, y: 100 },
       data: { label: mindmapData.root.message },
-      style: {
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        border: '1px solid #5a6fd8',
-        borderRadius: '12px',
-        padding: '12px 20px',
-        fontSize: '16px',
-        fontWeight: 'bold',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        minWidth: '200px',
-        textAlign: 'center'
-      }
+      draggable: true,
+      selectable: true,
+      deletable: false,
+      className: 'root-node-wrapper',
     });
 
-    // Create category nodes and edges
+    // Create category nodes and edges with better distribution
     if (mindmapData.root.children && Array.isArray(mindmapData.root.children)) {
       const categoryCount = mindmapData.root.children.length;
       const angleStep = (2 * Math.PI) / categoryCount;
-      const radius = 250;
+      const radius = 300;
 
       mindmapData.root.children.forEach((category, categoryIndex) => {
-        const angle = categoryIndex * angleStep - Math.PI / 2; // Start from top
+        const angle = categoryIndex * angleStep - Math.PI / 2;
         const categoryId = `node-${nodeId++}`;
         
-        // Position categories in a circle around root
+        // Enhanced positioning with better spacing
         const x = 400 + radius * Math.cos(angle);
-        const y = 200 + radius * Math.sin(angle);
+        const y = 250 + radius * Math.sin(angle);
 
         nodes.push({
           id: categoryId,
           type: 'category',
-          position: { x: x - 75, y: y - 25 }, // Center the node
+          position: { x: x - 100, y: y - 30 },
           data: { label: category.message },
-          style: {
-            background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-            color: 'white',
-            border: '1px solid #0d7377',
-            borderRadius: '10px',
-            padding: '10px 16px',
-            fontSize: '14px',
-            fontWeight: '600',
-            boxShadow: '0 3px 8px rgba(0,0,0,0.12)',
-            minWidth: '150px',
-            textAlign: 'center'
-          }
+          draggable: true,
+          selectable: true,
+          deletable: false,
+          className: 'category-node-wrapper',
         });
 
-        // Create edge from root to category
+        // Create enhanced edge from root to category
         edges.push({
           id: `edge-${rootId}-${categoryId}`,
           source: rootId,
@@ -142,25 +136,27 @@ const MindMap = ({ mindmapData }) => {
           sourceHandle: 'root-source',
           targetHandle: 'category-target',
           type: 'smoothstep',
-          animated: false,
+          animated: true,
           style: {
-            stroke: '#5a6fd8',
-            strokeWidth: 2,
+            stroke: 'url(#gradient1)',
+            strokeWidth: 3,
+            filter: 'drop-shadow(0 0 6px rgba(102, 126, 234, 0.4))',
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: '#5a6fd8',
+            color: '#667eea',
+            width: 20,
+            height: 20,
           },
         });
 
-        // Create subtopic nodes and edges
+        // Create subtopic nodes with improved layout
         if (category.children && Array.isArray(category.children)) {
           const subtopicCount = category.children.length;
-          const subtopicAngleStep = Math.PI / Math.max(subtopicCount, 1); // Spread subtopics in a semicircle
-          const subtopicRadius = 120;
-
+          const subtopicRadius = 150;
+          
           category.children.forEach((subtopic, subtopicIndex) => {
-            const subtopicAngle = angle + (subtopicIndex - (subtopicCount - 1) / 2) * subtopicAngleStep * 0.5;
+            const subtopicAngle = angle + (subtopicIndex - (subtopicCount - 1) / 2) * (Math.PI / 4);
             const subtopicId = `node-${nodeId++}`;
             
             const subtopicX = x + subtopicRadius * Math.cos(subtopicAngle);
@@ -169,23 +165,15 @@ const MindMap = ({ mindmapData }) => {
             nodes.push({
               id: subtopicId,
               type: 'subtopic',
-              position: { x: subtopicX - 60, y: subtopicY - 20 },
+              position: { x: subtopicX - 80, y: subtopicY - 25 },
               data: { label: subtopic.message },
-              style: {
-                background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-                color: '#333',
-                border: '1px solid #ff6b6b',
-                borderRadius: '8px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                fontWeight: '500',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                minWidth: '120px',
-                textAlign: 'center'
-              }
+              draggable: true,
+              selectable: true,
+              deletable: false,
+              className: 'subtopic-node-wrapper',
             });
 
-            // Create edge from category to subtopic
+            // Create enhanced edge from category to subtopic
             edges.push({
               id: `edge-${categoryId}-${subtopicId}`,
               source: categoryId,
@@ -193,14 +181,17 @@ const MindMap = ({ mindmapData }) => {
               sourceHandle: 'category-source',
               targetHandle: 'subtopic-target',
               type: 'smoothstep',
-              animated: false,
+              animated: true,
               style: {
-                stroke: '#0d7377',
-                strokeWidth: 1.5,
+                stroke: 'url(#gradient2)',
+                strokeWidth: 2,
+                filter: 'drop-shadow(0 0 4px rgba(17, 153, 142, 0.3))',
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: '#0d7377',
+                color: '#11998e',
+                width: 16,
+                height: 16,
               },
             });
           });
@@ -211,7 +202,7 @@ const MindMap = ({ mindmapData }) => {
     return { nodes, edges };
   }, [mindmapData]);
 
-  const [nodesState, , onNodesChange] = useNodesState(nodes);
+  const [nodesState, setNodes, onNodesChange] = useNodesState(nodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(edges);
 
   const onConnect = useCallback(
@@ -223,6 +214,7 @@ const MindMap = ({ mindmapData }) => {
     return (
       <div className="mindmap-container">
         <div className="no-mindmap">
+          <div className="no-mindmap-icon">🧠</div>
           <p>No mind map data available</p>
         </div>
       </div>
@@ -240,33 +232,73 @@ const MindMap = ({ mindmapData }) => {
           onConnect={onConnect}
           fitView
           attributionPosition="bottom-left"
-          defaultEdgeOptions={{
-            style: { strokeWidth: 3 },
-            markerEnd: { type: MarkerType.ArrowClosed },
-          }}
           nodeTypes={memoizedNodeTypes}
           edgeTypes={memoizedEdgeTypes}
           fitViewOptions={{
-            padding: 0.2,
+            padding: 0.3,
             includeHiddenNodes: false,
+            minZoom: 0.2,
+            maxZoom: 1.5,
           }}
           minZoom={0.1}
-          maxZoom={2}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          maxZoom={3}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+          nodesDraggable={true}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          selectNodesOnDrag={false}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          panOnScroll={false}
+          preventScrolling={false}
+          nodeOrigin={[0.5, 0.5]}
+          snapToGrid={false}
+          snapGrid={[15, 15]}
         >
-          <Controls />
+          <Controls 
+            className="custom-controls"
+            showZoom={true}
+            showFitView={true}
+            showInteractive={true}
+          />
           <MiniMap 
+            className="custom-minimap"
             nodeStrokeColor="#333"
-            nodeColor="#fff"
-            nodeBorderRadius={8}
-            maskColor="rgba(0, 0, 0, 0.1)"
+            nodeColor={(node) => {
+              switch (node.type) {
+                case 'root': return '#667eea';
+                case 'category': return '#11998e';
+                case 'subtopic': return '#ff6b6b';
+                default: return '#fff';
+              }
+            }}
+            nodeBorderRadius={12}
+            maskColor="rgba(0, 0, 0, 0.05)"
+            pannable={true}
+            zoomable={true}
           />
           <Background 
             variant={BackgroundVariant.Dots} 
-            gap={20} 
-            size={1}
+            gap={25} 
+            size={1.5}
             color="#e2e8f0"
+            className="custom-background"
           />
+          
+          {/* SVG Gradients for edges */}
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
+            <defs>
+              <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#667eea" />
+                <stop offset="100%" stopColor="#764ba2" />
+              </linearGradient>
+              <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#11998e" />
+                <stop offset="100%" stopColor="#38ef7d" />
+              </linearGradient>
+            </defs>
+          </svg>
         </ReactFlow>
       </div>
     </div>

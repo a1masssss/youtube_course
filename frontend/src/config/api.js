@@ -73,6 +73,7 @@ export const API_ENDPOINTS = {
   FLASHCARDS: `/flashcards/`,
   MINDMAP: `/mindmap/`,
   QUIZ: `/quiz/`,
+  QUIZ_SUBMIT: `/quiz/submit/`,
   
   // Authentication endpoints
   AUTH: {

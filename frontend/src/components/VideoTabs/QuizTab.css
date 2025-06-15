@@ -229,6 +229,28 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.completion-info {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.quiz-completed-actions {
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.completion-message {
+  color: #22c55e;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
 .quiz-answers {
   display: flex;
   flex-direction: column;

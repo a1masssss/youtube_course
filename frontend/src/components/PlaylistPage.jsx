@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 import VideoCard from './VideoCard';
@@ -10,9 +10,17 @@ const PlaylistPage = () => {
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     const fetchPlaylist = async () => {
+      if (fetchingRef.current) {
+        console.log('Playlist fetch already in progress, skipping...');
+        return;
+      }
+      
+      fetchingRef.current = true;
+      
       try {
         const response = await apiClient.get(API_ENDPOINTS.getPlaylist(playlistUuid));
         setPlaylist(response.data);
@@ -21,6 +29,7 @@ const PlaylistPage = () => {
         setError('Failed to load playlist');
       } finally {
         setLoading(false);
+        fetchingRef.current = false;
       }
     };
 

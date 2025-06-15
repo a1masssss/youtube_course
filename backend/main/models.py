@@ -87,9 +87,8 @@ class MindMap(models.Model):
         related_name="mindmaps",
         on_delete=models.CASCADE
     )
-    
     class Meta:
-        unique_together = ['uuid_mindmap', 'user']  # Одна и та же карточка может быть у разных пользователей
+        unique_together = ['uuid_mindmap', 'user']
 
     def __str__(self):
         return f"{self.mindmap_json[:50]} - {self.user.email}"
@@ -111,6 +110,12 @@ class Quiz(models.Model):
         on_delete=models.CASCADE
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Quiz completion fields
+    is_completed = models.BooleanField(default=False)
+    score_percentage = models.FloatField(null=True, blank=True)  
+    correct_answers_count = models.PositiveIntegerField(null=True, blank=True)
+    user_answers = models.JSONField(null=True, blank=True) 
     
     class Meta:
         unique_together = ['user', 'quiz_video']  # Один квиз на видео для каждого пользователя
