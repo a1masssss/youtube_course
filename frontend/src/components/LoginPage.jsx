@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleLoginButton from './GoogleLoginButton';
 import './LoginPage.css';
+import authImage from '../assets/auth_image.png';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -77,76 +78,90 @@ const LoginPage = () => {
 
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>Welcome Back</h1>
-          <p>Sign in to your account</p>
+      <div className="login-layout">
+        {/* Left side - Image */}
+        <div className="login-image-section">
+          <img 
+            src={authImage}
+            alt="Coursiva - Student studying with laptop and notebook" 
+            className="login-image"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {errors.general && (
-            <div className="error-message general-error">
-              {errors.general}
+        {/* Right side - Login Form */}
+        <div className="login-form-section">
+          <div className="login-card">
+            <div className="login-header">
+              <h1>Sign in to Coursiva</h1>
+              <p>Welcome back! Please sign in to continue</p>
             </div>
-          )}
 
-          {/* Google Login Button */}
-          <GoogleLoginButton text="Sign in with Google" />
-          
-          {/* Divider */}
-          <div className="divider">
-            <span className="divider-text">or</span>
+            <form onSubmit={handleSubmit} className="login-form">
+              {errors.general && (
+                <div className="error-message general-error">
+                  {errors.general}
+                </div>
+              )}
+
+              {/* Google Login Button */}
+              <GoogleLoginButton text="Continue with Google" />
+              
+              {/* Divider */}
+              <div className="divider">
+                <span className="divider-text">or</span>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={errors.email ? 'error' : ''}
+                  placeholder="me@example.com"
+                  disabled={loading}
+                />
+                {errors.email && (
+                  <span className="error-message">{errors.email}</span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={errors.password ? 'error' : ''}
+                  disabled={loading}
+                />
+                {errors.password && (
+                  <span className="error-message">{errors.password}</span>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="login-button"
+                disabled={loading}
+              >
+                {loading ? 'Signing In...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div className="login-footer">
+              <p>
+                New to Coursiva?{' '}
+                <Link to="/signup" className="signup-link">
+                  Sign up here
+                </Link>
+              </p>
+            </div>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'error' : ''}
-              placeholder="me@example.com"
-              disabled={loading}
-            />
-            {errors.email && (
-              <span className="error-message">{errors.email}</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className={errors.password ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.password && (
-              <span className="error-message">{errors.password}</span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className="login-button"
-            disabled={loading}
-          >
-            {loading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="login-footer">
-          <p>
-            New to Coursiva?{' '}
-            <Link to="/signup" className="signup-link">
-              Sign up here
-            </Link>
-          </p>
         </div>
       </div>
     </div>

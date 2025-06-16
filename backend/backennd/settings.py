@@ -168,22 +168,8 @@ BACKEND_URL = os.getenv('BACKEND_URL')
 CORS_ALLOWED_ORIGINS = [
     FRONTEND_URL,
     # BACKEND_URL,
-    "https://coursiva.xyz",
-    "https://coursiva.xyz:80",
-    "https://www.coursiva.xyz:443",
 ]
 
-# # in prod
-# CORS_ALLOWED_ORIGINS = [
-#     FRONTEND_URL,
-#     "https://coursiva.xyz",
-#     "https://www.coursiva.xyz",
-#     "http://coursiva.xyz",
-#     "http://www.coursiva.xyz",
-#     "http://164.90.185.179:3000",
-#     "http://164.90.185.179:80",
-#     "http://164.90.185.179:443",
-# ]
 
 
 
@@ -289,6 +275,7 @@ SESSION_COOKIE_AGE = 3600  # 1 hour
 
 # CSRF settings for OAuth
 CSRF_COOKIE_SAMESITE = 'Lax'
+
 CSRF_TRUSTED_ORIGINS = [
     FRONTEND_URL,
     BACKEND_URL,

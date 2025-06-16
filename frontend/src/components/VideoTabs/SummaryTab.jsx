@@ -12,7 +12,6 @@ const SummaryTab = ({ video }) => {
       <div className="summary-section">
         <div className="no-content">
           <p>No summary available yet.</p>
-          <small>The summary will be generated automatically once the video is processed.</small>
         </div>
       </div>
     );

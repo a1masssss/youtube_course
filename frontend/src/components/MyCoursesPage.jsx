@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { apiClient, API_ENDPOINTS } from '../config/api';
@@ -11,27 +11,45 @@ const MyCoursesPage = () => {
   const [error, setError] = useState(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { playlistId, title }
   const [deleting, setDeleting] = useState(false);
-  const fetchingRef = useRef(false);
 
   useEffect(() => {
+    const abortController = new AbortController();
+    let isMounted = true;
+    
     const fetchPlaylists = async () => {
-      if (fetchingRef.current) return;
+      if (!isMounted) return;
       
-      fetchingRef.current = true;
       try {
-        const response = await apiClient.get(API_ENDPOINTS.MY_COURSES);
-        console.log('📋 Playlists data:', response.data);
-        setPlaylists(response.data);
+        const response = await apiClient.get(API_ENDPOINTS.MY_COURSES, {
+          signal: abortController.signal
+        });
+        
+        if (isMounted) {
+          console.log('📋 Playlists data:', response.data);
+          setPlaylists(response.data);
+        }
       } catch (error) {
-        console.error('Error fetching playlists:', error);
-        setError('Failed to load courses');
+        if (error.name === 'AbortError') {
+          console.log('Playlists fetch aborted');
+          return;
+        }
+        if (isMounted) {
+          console.error('Error fetching playlists:', error);
+          setError('Failed to load courses');
+        }
       } finally {
-        setLoading(false);
-        fetchingRef.current = false;
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchPlaylists();
+    
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, []);
 
   const handlePlaylistClick = (playlistUuid) => {

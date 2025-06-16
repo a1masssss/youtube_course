@@ -15,6 +15,7 @@ from django.contrib.auth import login as django_login
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from allauth.account.utils import perform_login
 from allauth.core.exceptions import ImmediateHttpResponse
+from django.conf import settings
 import json
 from urllib.parse import urlencode
 import logging
@@ -37,24 +38,23 @@ def get_tokens_for_user(user):
 
 class RegisterView(APIView):
     permission_classes = []
+    authentication_classes = []
 
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         
         if serializer.is_valid():
             try:
-                # Create inactive user
                 user = serializer.save()
                 print(f"✅ User created: {user.email}")
                 
-                # Create and send activation email
                 activation = EmailActivation.objects.create(user=user)
+                
                 try:
                     activation.send_email()
                     print(f"📧 Activation email sent to: {user.email}")
                 except Exception as e:
-                    print(f"❌ Failed to send activation email: {str(e)}")
-                    # Even if email fails, we return success but log the error
+                    print(f"❌ Email sending failed: {str(e)}")
                 
                 return Response({
                     'message': 'Registration successful. Please check your email to activate your account.',
@@ -71,6 +71,9 @@ class RegisterView(APIView):
         else:
             print("❌ Invalid registration data:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -138,25 +141,11 @@ class UserProfileView(APIView):
     def get(self, request):
         user = request.user
         
-        # Try to get Google profile picture from social account
-        picture_url = None
-        try:
-            social_account = SocialAccount.objects.filter(
-                user=user, 
-                provider='google'
-            ).first()
-            
-            if social_account and social_account.extra_data:
-                picture_url = social_account.extra_data.get('picture')
-        except Exception as e:
-            logger.warning(f"Could not retrieve social account picture: {e}")
-        
         return Response({
             'id': user.id,
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'picture': picture_url,
         })
 
 class RefreshTokenView(APIView):
@@ -191,19 +180,6 @@ class GoogleOAuthCallbackView(APIView):
             if request.user.is_authenticated:
                 logger.info(f"✅ User is authenticated: {request.user.email}")
                 
-                # Get Google profile picture
-                picture_url = None
-                try:
-                    social_account = SocialAccount.objects.filter(
-                        user=request.user, 
-                        provider='google'
-                    ).first()
-                    
-                    if social_account and social_account.extra_data:
-                        picture_url = social_account.extra_data.get('picture')
-                except Exception as e:
-                    logger.warning(f"Could not retrieve social account picture: {e}")
-                
                 # Generate JWT tokens for the user
                 refresh = RefreshToken.for_user(request.user)
                 access_token = str(refresh.access_token)
@@ -218,7 +194,6 @@ class GoogleOAuthCallbackView(APIView):
                         'email': request.user.email,
                         'first_name': request.user.first_name,
                         'last_name': request.user.last_name,
-                        'picture': picture_url,
                     }
                 }, status=200)
             else:
@@ -246,7 +221,7 @@ class OAuthRedirectView(APIView):
             return Response({'error': 'Redirect loop detected'}, status=400)
         
         # Use environment variable or default to localhost for development
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = os.getenv('FRONTEND_URL')
         
         # If user is authenticated, generate tokens and redirect with them
         if request.user.is_authenticated:
@@ -364,6 +339,18 @@ class ResendActivationEmailView(APIView):
                 {'error': 'No pending activation found for this email'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+def activate_user(request, token: str, id: int):
+    activation = get_object_or_404(EmailActivation, token=token)
+    user = get_object_or_404(User, id=id)
+
+    activation.is_active = True
+    activation.save()
+
+    user.is_active = True 
+    user.save()
+
+    return redirect('login')
 
 
 

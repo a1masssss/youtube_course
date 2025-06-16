@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../../config/api';
 import './QuizTab.css';
 
-const QuizTab = ({ video }) => {
+const QuizTab = ({ video, onSwitchToChat }) => {
   // Quiz state
   const [quizData, setQuizData] = useState(null);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -13,8 +13,73 @@ const QuizTab = ({ video }) => {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [savedResults, setSavedResults] = useState(null);
   
-  // Ref to prevent double requests
-  const initialFetchDone = useRef(false);
+  // AI explanation state
+  const [explanationLoading, setExplanationLoading] = useState({});
+
+  // Ask AI for explanation
+  const askAIExplanation = async (questionIndex, userAnswerIndex) => {
+    if (!video?.uuid_video || !quizData) return;
+    
+    setExplanationLoading(prev => ({ ...prev, [questionIndex]: true }));
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ_EXPLAIN}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          video_uuid: video.uuid_video,
+          question_index: questionIndex,
+          user_answer_index: userAnswerIndex
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let explanation = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              // Switch to chat tab with explanation
+              if (onSwitchToChat) {
+                onSwitchToChat(explanation);
+              }
+              return;
+            } else if (data.startsWith('[Error:')) {
+              throw new Error(data);
+            } else {
+              explanation += data;
+            }
+          }
+        }
+      }
+
+    } catch (error) {
+      console.error('Error getting AI explanation:', error);
+      // Switch to chat with error message
+      if (onSwitchToChat) {
+        onSwitchToChat('Sorry, there was an error getting the explanation. Please try asking in the chat manually.');
+      }
+    } finally {
+      setExplanationLoading(prev => ({ ...prev, [questionIndex]: false }));
+    }
+  };
 
   // Fetch existing quiz
   const fetchQuiz = useCallback(async () => {
@@ -169,18 +234,94 @@ const QuizTab = ({ video }) => {
     setShowResults(false);
     setQuizCompleted(false);
     setSavedResults(null);
+    setExplanationLoading({});
     
-    // Prevent double fetch in development mode
-    if (!initialFetchDone.current) {
-      initialFetchDone.current = true;
-      fetchQuiz();
-    }
+    // Create AbortController for this effect
+    const abortController = new AbortController();
+    let isMounted = true;
+    
+    const fetchData = async () => {
+      if (!isMounted) return;
+      
+      setQuizLoading(true);
+      setQuizError(null);
+      
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(
+          `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ}?video_uuid=${videoId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            signal: abortController.signal
+          }
+        );
 
-    // Cleanup function to reset the ref when component unmounts or video changes
-    return () => {
-      initialFetchDone.current = false;
+        if (abortController.signal.aborted) return;
+
+        if (response.status === 404) {
+          // Quiz not found - clear data to show generate button
+          if (isMounted) {
+            setQuizData(null);
+            setQuizCompleted(false);
+            setSavedResults(null);
+          }
+          return;
+        }
+
+        const data = await response.json();
+        
+        if (response.ok && isMounted) {
+          setQuizData(data.quiz.quiz_json || []);
+          
+          // Check if quiz is completed
+          if (data.completion && data.completion.is_completed) {
+            setQuizCompleted(true);
+            setSavedResults(data.completion);
+            setShowResults(true);
+            
+            // Reconstruct selected answers from saved results
+            const reconstructedAnswers = {};
+            if (data.completion.user_answers) {
+              data.completion.user_answers.forEach(answer => {
+                reconstructedAnswers[answer.question_index] = answer.selected_answer;
+              });
+              setSelectedAnswers(reconstructedAnswers);
+            }
+          } else {
+            setQuizCompleted(false);
+            setSavedResults(null);
+          }
+          
+          console.log('✅ Quiz loaded successfully:', data);
+        } else if (isMounted) {
+          throw new Error(data.error || 'Failed to load quiz');
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Quiz fetch aborted');
+          return;
+        }
+        if (isMounted) {
+          console.error('❌ Quiz loading error:', error);
+          setQuizError(error.message);
+        }
+      } finally {
+        if (isMounted) {
+          setQuizLoading(false);
+        }
+      }
     };
-  }, [video?.uuid_video, fetchQuiz]);
+
+    fetchData();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [video?.uuid_video]); // Only depend on video UUID
 
   if (quizLoading) {
     return (
@@ -206,7 +347,6 @@ const QuizTab = ({ video }) => {
   if (!quizData || !Array.isArray(quizData) || quizData.length === 0) {
     return (
       <div className="quiz-empty">
-        <p>No quiz available for this video yet.</p>
         <button className="control-button" onClick={generateQuiz}>
           Generate Quiz
         </button>
@@ -287,11 +427,6 @@ const QuizTab = ({ video }) => {
           <div className="quiz-score">
             <h2>Quiz Results</h2>
             <p>Score: {score.correct} out of {score.total} ({score.percentage}%)</p>
-            {quizCompleted && savedResults && (
-              <p className="completion-info">
-                Completed on: {new Date(savedResults.completed_at).toLocaleDateString()}
-              </p>
-            )}
           </div>
           
           <div className="quiz-answers">
@@ -318,6 +453,26 @@ const QuizTab = ({ video }) => {
                     </div>
                   ))}
                 </div>
+                
+                {/* Ask AI Button */}
+                <div className="ask-ai-container">
+                  <button
+                    className="ask-ai-button"
+                    onClick={() => askAIExplanation(index, selectedAnswers[index])}
+                    disabled={explanationLoading[index]}
+                  >
+                    {explanationLoading[index] ? (
+                      <>
+                        <div className="loading-spinner-small" />
+                        Generating explanation...
+                      </>
+                    ) : (
+                      <>
+                        Ask AI
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -333,27 +488,6 @@ const QuizTab = ({ video }) => {
             >
               Try Again
             </button>
-          )}
-          
-          {quizCompleted && (
-            <div className="quiz-completed-actions">
-              <p className="completion-message">
-                ✅ Quiz completed and results saved!
-              </p>
-              <button
-                className="control-button"
-                onClick={() => {
-                  setSelectedAnswers({});
-                  setShowResults(false);
-                  setCurrentQuestionIndex(0);
-                  setQuizCompleted(false);
-                  setSavedResults(null);
-                  generateQuiz();
-                }}
-              >
-                Generate New Quiz
-              </button>
-            </div>
           )}
         </div>
       </div>

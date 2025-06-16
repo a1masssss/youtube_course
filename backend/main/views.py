@@ -7,7 +7,8 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404, StreamingHttpResponse
 from django.utils import timezone
 
-from main.utils.summary_chatbot import summary_chatbot
+from main.utils.summary_chatbot import process_chatbot_request
+from main.utils.quiz_explanation import process_quiz_explanation_request
 
 from .models import Playlist, Video, Flashcard, MindMap, Quiz
 from .serializers import (
@@ -22,7 +23,7 @@ from main.utils.transcript_fetch import fetch_youtube_data, extract_full_transcr
 from main.utils.summarizer import summarize_transcript
 
 from main.utils.generate_flashcards import generate_flashcards_from_transcript
-from main.utils.generate_mindmap import generate_mindmap_from_transcript
+from main.utils.generate_mindmap import generate_mindmap_from_transcript, generate_mindmap_from_video
 from main.utils.generate_quiz import generate_quiz_from_transcript
 
 
@@ -32,8 +33,6 @@ class PlaylistAPIView(APIView):
     
     def post(self, request):
         print("🚀 Received POST request to /api/playlists/")
-        print("📦 Request data:", request.data)
-        print(f"👤 User: {request.user.email}")
         
         url = request.data.get("url")
         if not url:
@@ -103,7 +102,39 @@ class PlaylistAPIView(APIView):
                             print(f"❌ Error extracting duration for video {video_id}: {str(e)}")
                             durations_by_id[video_id] = 0
 
+            # Check total duration limit (30 hours = 108,000 seconds)
+            MAX_PLAYLIST_DURATION = 30 * 60 * 60  # 30 hours in seconds
+            total_duration = sum(durations_by_id.values())
+            
+            print(f"📊 Total playlist duration: {total_duration} seconds ({total_duration/3600:.2f} hours)")
+            
+            if total_duration > MAX_PLAYLIST_DURATION:
+                # Delete the created playlist since we can't process it
+                playlist.delete()
+                hours = total_duration / 3600
+                max_hours = MAX_PLAYLIST_DURATION / 3600
+                error_message = f"Playlist duration ({hours:.1f} hours) exceeds the maximum allowed duration of {max_hours} hours. Please use a shorter playlist to reduce server load."
+                print(f"❌ {error_message}")
+                return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Filter videos by cumulative duration to ensure we don't exceed the limit
+            processed_videos = []
+            cumulative_duration = 0
+            
             for v in videos_info:
+                video_duration = durations_by_id.get(v["id"], 0)
+                if cumulative_duration + video_duration <= MAX_PLAYLIST_DURATION:
+                    processed_videos.append(v)
+                    cumulative_duration += video_duration
+                    print(f"✅ Added video {v['id']} - Running total: {cumulative_duration/3600:.2f} hours")
+                else:
+                    print(f"⏱️ Skipping video {v['id']} - would exceed time limit")
+                    break
+
+            print(f"📈 Processing {len(processed_videos)} out of {len(videos_info)} videos")
+            print(f"🕐 Final duration: {cumulative_duration/3600:.2f} hours")
+
+            for v in processed_videos:
                 transcript = transcripts_by_id.get(v["id"], "")
                 timecode = timecodes_by_id.get(v["id"], None)
                 duration_sec = durations_by_id.get(v["id"], 0)
@@ -199,41 +230,19 @@ class SummaryChatbotAPIView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        video_uuid = request.data.get("video_uuid")
-        user_message = request.data.get("user_message")
-
-        if not video_uuid:
-            return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not user_message:
-            return Response({"error": "user_message is required"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            # Получаем саммари текущего пользователя
-            video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
-            summary = video.summary
-            
-            if not summary:
-                return Response({"error": "No summary available for this video"}, status=status.HTTP_400_BAD_REQUEST)
-
-            prompt = f"""
-            You are an expert in understanding the user's question about this content:
-            {summary}
-            User's question:
-            {user_message}
-
-            Please answer simply and briefly in 3–5 sentences.
-            Answer only based on the content above.
-
-            Please answer based ONLY on the video content above.
-            """
-            
-            response = StreamingHttpResponse(
-                summary_chatbot(prompt), 
+            response_generator = process_chatbot_request(
+                user=request.user,
+                video_uuid=request.data.get("video_uuid"),
+                user_message=request.data.get("user_message")
+            )
+            return StreamingHttpResponse(
+                response_generator, 
                 content_type='text/event-stream'
             )
-            return response
             
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Video.DoesNotExist:
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
@@ -255,10 +264,9 @@ class GenerateFlashCardsView(APIView):
             print(f"🎥 Found video: {video.title}")
             
             if not video.full_transcript or not video.full_transcript.strip():
-                print("❌ No transcript available for this video")
+                print("No transcript available for this video")
                 return Response({"error": "No transcript available for this video"}, status=status.HTTP_400_BAD_REQUEST)
             
-            print(f"📄 Transcript length: {len(video.full_transcript)} characters")
             
             # Сначала очищаем дубликаты если они есть
             existing_flashcards = Flashcard.objects.filter(flashcard_video=video, user=request.user)
@@ -340,15 +348,16 @@ class GenerateMindMapView(APIView):
         try:
             video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
             
-            # Try to get existing mindmap
-            try:
-                mindmap = MindMap.objects.get(mindmap_video=video, user=request.user)
+            # Get existing mindmap (should be only one due to unique constraint)
+            mindmap = MindMap.objects.filter(mindmap_video=video, user=request.user).first()
+            
+            if mindmap:
                 return Response({
                     "message": "Mindmap found",
                     "mindmap": mindmap.mindmap_json,
                     "video_title": video.title
                 }, status=200)
-            except MindMap.DoesNotExist:
+            else:
                 return Response({"error": "No mindmap found for this video"}, status=status.HTTP_404_NOT_FOUND)
                 
         except Video.DoesNotExist:
@@ -358,52 +367,59 @@ class GenerateMindMapView(APIView):
 
     def post(self, request):
         """Generate and save new mindmap for a video"""
+        print("Received POST request to /api/mindmap/")
         video_uuid = request.data.get("video_uuid")
         
         if not video_uuid:
             return Response({"error": "video_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            # Get video for current user
             video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
+            print(f"🎥 Found video: {video.title}")
             
-            if not video.full_transcript:
+            if not video.full_transcript or not video.full_transcript.strip():
+                print("❌ No transcript available for this video")
                 return Response({"error": "No transcript available for this video"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Check if mindmap already exists
-            existing_mindmap = MindMap.objects.filter(mindmap_video=video, user=request.user).first()
+            print(f"📄 Transcript length: {len(video.full_transcript)} characters")
             
-            if existing_mindmap:
-                # Return existing mindmap
-                return Response({
-                    "message": "Mindmap already exists",
-                    "mindmap": existing_mindmap.mindmap_json,
-                    "video_title": video.title
-                }, status=200)
+            # Use generate_mindmap_from_video which handles get_or_create safely
+            mindmap_data, created = generate_mindmap_from_video(video, request.user)
             
-            # Generate new mindmap from transcript
-            mindmap_data = generate_mindmap_from_transcript(video.full_transcript)
+            if created:
+                print("✅ New mindmap generated")
+                message = "Mindmap generated successfully"
+                status_code = 201
+            else:
+                print("✅ Existing mindmap found")
+                message = "Mindmap already exists for this video"
+                status_code = 200
             
-            # Save mindmap to database
-            mindmap = MindMap.objects.create(
-                mindmap_json=mindmap_data,
-                user=request.user,
-                mindmap_video=video
-            )
+            # Get the mindmap object for uuid
+            mindmap_obj = MindMap.objects.filter(mindmap_video=video, user=request.user).first()
+            
+            if not mindmap_obj:
+                print("❌ Mindmap object not found after generation")
+                return Response({"error": "Failed to retrieve mindmap data"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             return Response({
-                "message": "Mindmap generated and saved successfully",
+                "message": message,
                 "mindmap": mindmap_data,
+                "uuid_mindmap": mindmap_obj.uuid_mindmap,
                 "video_title": video.title,
-                "mindmap_uuid": mindmap.uuid_mindmap
-            }, status=201)
+                "created": created
+            }, status=status_code)
                 
         except Video.DoesNotExist:
+            print("❌ Video not found")
             return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
+            print(f"❌ Mindmap generation failed: {e}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print(f"❌ Unexpected error: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-   
 
 
 class GenerateQuizView(APIView):
@@ -608,6 +624,39 @@ class SubmitQuizResultsView(APIView):
             return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             print(f"❌ Error saving quiz results: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class QuizExplanationAPIView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """
+        Handle AI explanation requests for quiz answers.
+        """
+        try:
+            # Process request using utility function
+            response_generator = process_quiz_explanation_request(
+                user=request.user,
+                video_uuid=request.data.get("video_uuid"),
+                question_index=request.data.get("question_index"),
+                user_answer_index=request.data.get("user_answer_index")
+            )
+            
+            # Return streaming response
+            return StreamingHttpResponse(
+                response_generator, 
+                content_type='text/event-stream'
+            )
+            
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Video.DoesNotExist:
+            return Response({"error": "Video not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Quiz.DoesNotExist:
+            return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

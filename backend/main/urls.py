@@ -1,6 +1,6 @@
 from django.urls import path
 
-from main.views import GenerateQuizView, MyCoursesAPIView, MyCourseDeleteAPIView, PlaylistAPIView, PlaylistDetailAPIView, PlaylistVideosListAPIView, SummaryChatbotAPIView, VideoDetailAPIView, GenerateFlashCardsView, GenerateMindMapView, SubmitQuizResultsView
+from main.views import GenerateQuizView, MyCoursesAPIView, MyCourseDeleteAPIView, PlaylistAPIView, PlaylistDetailAPIView, PlaylistVideosListAPIView, SummaryChatbotAPIView, VideoDetailAPIView, GenerateFlashCardsView, GenerateMindMapView, SubmitQuizResultsView, QuizExplanationAPIView
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -20,6 +20,7 @@ urlpatterns = [
     path('mindmap/', GenerateMindMapView.as_view(), name="mindmap"),
     path('quiz/', GenerateQuizView.as_view(), name="quiz"),
     path('quiz/submit/', SubmitQuizResultsView.as_view(), name="submit_quiz"),
+    path('quiz/explain/', QuizExplanationAPIView.as_view(), name="quiz_explanation"),
     
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

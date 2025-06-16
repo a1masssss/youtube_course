@@ -6,7 +6,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './ChatTab.css';
 
-const ChatTab = ({ video }) => {
+const ChatTab = ({ video, presetMessage }) => {
   // Chat state
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -14,6 +14,27 @@ const ChatTab = ({ video }) => {
   
   // Chat messages ref for auto-scroll
   const chatMessagesRef = useRef(null);
+  
+  // Ref to track processed preset messages
+  const processedPresetRef = useRef(null);
+
+  // Handle preset message from quiz
+  useEffect(() => {
+    if (presetMessage && presetMessage.trim() && processedPresetRef.current !== presetMessage.trim()) {
+      // Mark this preset as processed
+      processedPresetRef.current = presetMessage.trim();
+      
+      // Add the preset message as a bot response
+      const botMessage = {
+        id: Date.now(),
+        type: 'bot',
+        content: presetMessage.trim(),
+        timestamp: new Date(),
+        isPreset: true
+      };
+      setChatMessages(prev => [...prev, botMessage]);
+    }
+  }, [presetMessage]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -136,12 +157,15 @@ const ChatTab = ({ video }) => {
     }
   };
 
-  // Reset chat when video changes
+  // Reset chat when video changes (but preserve preset message)
   useEffect(() => {
-    setChatMessages([]);
+    if (!presetMessage) {
+      setChatMessages([]);
+      processedPresetRef.current = null; // Reset processed preset ref
+    }
     setCurrentMessage('');
     setChatLoading(false);
-  }, [video?.uuid_video]);
+  }, [video?.uuid_video, presetMessage]);
 
   return (
     <div className="chat-container">
@@ -163,7 +187,7 @@ const ChatTab = ({ video }) => {
             ) : (
               <div className="messages-list">
                 {chatMessages.map((message) => (
-                  <div key={message.id} className={`message ${message.type}`}>
+                  <div key={message.id} className={`message ${message.type} ${message.isPreset ? 'preset-message' : ''}`}>
                     <div className="message-avatar">
                       {message.type === 'user' ? (
                         <div className="user-avatar">You</div>
@@ -172,6 +196,11 @@ const ChatTab = ({ video }) => {
                       )}
                     </div>
                     <div className="message-content">
+                      {message.isPreset && (
+                        <div className="preset-indicator">
+                          Quiz Explanation
+                        </div>
+                      )}
                       {message.type === 'bot' ? (
                         <ReactMarkdown
                           remarkPlugins={[remarkMath]}
@@ -214,7 +243,6 @@ const ChatTab = ({ video }) => {
                             ),
                             li: ({ children }) => (
                               <li className="flex items-start gap-2 text-gray-200">
-                                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0" />
                                 <span>{children}</span>
                               </li>
                             ),

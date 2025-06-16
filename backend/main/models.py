@@ -88,7 +88,7 @@ class MindMap(models.Model):
         on_delete=models.CASCADE
     )
     class Meta:
-        unique_together = ['uuid_mindmap', 'user']
+        unique_together = ['user', 'mindmap_video'] 
 
     def __str__(self):
         return f"{self.mindmap_json[:50]} - {self.user.email}"

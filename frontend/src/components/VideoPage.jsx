@@ -15,6 +15,26 @@ const VideoPage = () => {
   
   // Tab state
   const [activeTab, setActiveTab] = useState('summary');
+  
+  // Chat preset message state
+  const [chatPresetMessage, setChatPresetMessage] = useState('');
+  
+  // Transcript search state
+  const [transcriptSearchTerm, setTranscriptSearchTerm] = useState('');
+
+  // Handle switching to chat with preset message
+  const handleSwitchToChat = (message) => {
+    setChatPresetMessage(message);
+    setActiveTab('chat');
+  };
+
+  // Clear preset message when switching away from chat
+  const handleTabChange = (newTab) => {
+    if (newTab !== 'chat') {
+      setChatPresetMessage('');
+    }
+    setActiveTab(newTab);
+  };
 
   // Load video data
   useEffect(() => {
@@ -71,8 +91,11 @@ const VideoPage = () => {
 
   if (loading) {
     return (
-      <div className="video-page">
-        {/* Loading silently in background */}
+      <div className="video-page video-page--loading">
+        <div className="loading-container">
+          <div className="loading-spinner" />
+          <div className="loading-text">Loading video...</div>
+        </div>
       </div>
     );
   }
@@ -81,7 +104,8 @@ const VideoPage = () => {
     return (
       <div className="video-page video-page--error">
         <div className="error-container">
-          <p className="error-message">Error: {error}</p>
+          <div className="error-message">Error: {error}</div>
+          <button onClick={() => window.location.reload()}>Try Again</button>
         </div>
       </div>
     );
@@ -91,7 +115,7 @@ const VideoPage = () => {
     return (
       <div className="video-page video-page--not-found">
         <div className="not-found-container">
-          <p className="not-found-message">Video not found</p>
+          <div className="not-found-message">Video not found</div>
         </div>
       </div>
     );
@@ -175,9 +199,24 @@ const VideoPage = () => {
 
             <div className="transcript-panel">
               <div className="transcript-panel__content">
-                <h3 className="transcript-panel__title">Transcript</h3>
+                <div className="transcript-panel__header">
+                  <h3 className="transcript-panel__title">Transcript</h3>
+                  <div className="transcript-panel__search">
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={transcriptSearchTerm}
+                      onChange={(e) => setTranscriptSearchTerm(e.target.value)}
+                      className="transcript-panel__search-input"
+                    />
+                  </div>
+                </div>
                 <div className="transcript-panel__body">
-                  <TranscriptTab video={video} isCompact={true} />
+                  <TranscriptTab 
+                    video={video} 
+                    isCompact={true} 
+                    externalSearchTerm={transcriptSearchTerm}
+                  />
                 </div>
               </div>
             </div>
@@ -186,34 +225,34 @@ const VideoPage = () => {
           <div className="tabs">
             <div className="tabs__nav">
               <button
-                onClick={() => setActiveTab('summary')}
+                onClick={() => handleTabChange('summary')}
                 className={`tabs__button ${activeTab === 'summary' ? 'tabs__button--active' : ''}`}
               >
                 Summary
               </button>
               <button
-                onClick={() => setActiveTab('flashcards')}
+                onClick={() => handleTabChange('flashcards')}
                 className={`tabs__button ${activeTab === 'flashcards' ? 'tabs__button--active' : ''}`}
               >
                 Flashcards
               </button>
               <button
-                onClick={() => setActiveTab('mindmap')}
+                onClick={() => handleTabChange('mindmap')}
                 className={`tabs__button ${activeTab === 'mindmap' ? 'tabs__button--active' : ''}`}
               >
                 Mindmap
               </button>
               <button
-                onClick={() => setActiveTab('quiz')}
+                onClick={() => handleTabChange('quiz')}
                 className={`tabs__button ${activeTab === 'quiz' ? 'tabs__button--active' : ''}`}
               >
                 Quiz
               </button>
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => handleTabChange('chat')}
                 className={`tabs__button ${activeTab === 'chat' ? 'tabs__button--active' : ''}`}
               >
-                Chat
+                AI Chat
               </button>
             </div>
 
@@ -225,8 +264,19 @@ const VideoPage = () => {
                 </div>
               )}
               {activeTab === 'mindmap' && <MindmapTab video={video} />}
-              {activeTab === 'quiz' && <QuizTab key={video?.uuid_video} video={video} />}
-              {activeTab === 'chat' && <ChatTab video={video} />}
+              {activeTab === 'quiz' && (
+                <QuizTab 
+                  key={video?.uuid_video} 
+                  video={video} 
+                  onSwitchToChat={handleSwitchToChat}
+                />
+              )}
+              {activeTab === 'chat' && (
+                <ChatTab 
+                  video={video} 
+                  presetMessage={chatPresetMessage}
+                />
+              )}
             </div>
           </div>
         </div>

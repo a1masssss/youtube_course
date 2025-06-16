@@ -9,7 +9,8 @@ from .views import (
     GoogleOAuthCallbackView,
     OAuthRedirectView,
     ActivateAccountView,
-    ResendActivationEmailView
+    ResendActivationEmailView,
+    activate_user
 )
 
 app_name = 'users'
@@ -24,4 +25,5 @@ urlpatterns = [
     path('oauth/redirect/', OAuthRedirectView.as_view(), name='oauth_redirect'),
     path('activate/', ActivateAccountView.as_view(), name='activate_account'),
     path('resend-activation/', ResendActivationEmailView.as_view(), name='resend_activation'),
+    path('activate/<str:token>/<int:id>/', activate_user, name='activate_user'),
 ]

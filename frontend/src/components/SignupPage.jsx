@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import './SignupPage.css';
 import { apiClient, API_ENDPOINTS } from '../config/api';
 import GoogleLoginButton from './GoogleLoginButton';
-import './SignupPage.css';
+import authImage from '../assets/auth_image.png';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -95,7 +96,7 @@ const SignupPage = () => {
 
       console.log("📥 Registration response received:", response.data);
 
-      // Registration successful - show success message
+      // Always show email activation message
       setErrors({ 
         success: `Registration successful! Please check your email (${formData.email}) to activate your account.` 
       });
@@ -157,134 +158,148 @@ const SignupPage = () => {
 
   return (
     <div className="signup-container">
-      <div className="signup-card">
-        <div className="signup-header">
-          <h1>Create Account</h1>
-          <p>Join us to start your learning journey</p>
+      <div className="signup-layout">
+        {/* Left side - Image */}
+        <div className="signup-image-section">
+          <img 
+            src={authImage}
+            alt="Coursiva - Student studying with laptop and notebook" 
+            className="signup-image"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="signup-form">
-          {errors.general && (
-            <div className="error-message general-error">
-              {errors.general}
+        {/* Right side - Signup Form */}
+        <div className="signup-form-section">
+          <div className="signup-card">
+            <div className="signup-header">
+              <h1>Create Account</h1>
+              <p>Join us to start your learning journey</p>
             </div>
-          )}
-          
-          {errors.success && (
-            <div className="success-message">
-              {errors.success}
-            </div>
-          )}
 
-          {/* Google Login Button */}
-          <GoogleLoginButton text="Sign up with Google" />
-          
-          {/* Divider */}
-          <div className="divider">
-            <span className="divider-text">or</span>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="firstName">First Name</label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={errors.firstName ? 'error' : ''}
-                placeholder="John"
-                disabled={loading}
-              />
-              {errors.firstName && (
-                <span className="error-message">{errors.firstName}</span>
+            <form onSubmit={handleSubmit} className="signup-form">
+              {errors.general && (
+                <div className="error-message general-error">
+                  {errors.general}
+                </div>
               )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="lastName">Last Name</label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={errors.lastName ? 'error' : ''}
-                placeholder="Doe"
-                disabled={loading}
-              />
-              {errors.lastName && (
-                <span className="error-message">{errors.lastName}</span>
+              
+              {errors.success && (
+                <div className="success-message">
+                  {errors.success}
+                </div>
               )}
+
+              {/* Google Login Button */}
+              <GoogleLoginButton text="Sign up with Google" />
+              
+              {/* Divider */}
+              <div className="divider">
+                <span className="divider-text">or</span>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="firstName">First Name</label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className={errors.firstName ? 'error' : ''}
+                    placeholder="John"
+                    disabled={loading}
+                  />
+                  {errors.firstName && (
+                    <span className="error-message">{errors.firstName}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="lastName">Last Name</label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className={errors.lastName ? 'error' : ''}
+                    placeholder="Doe"
+                    disabled={loading}
+                  />
+                  {errors.lastName && (
+                    <span className="error-message">{errors.lastName}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="email">Email Address</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={errors.email ? 'error' : ''}
+                  placeholder="me@example.com"
+                  disabled={loading}
+                />
+                {errors.email && (
+                  <span className="error-message">{errors.email}</span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={errors.password ? 'error' : ''}
+                  disabled={loading}
+                />
+                {errors.password && (
+                  <span className="error-message">{errors.password}</span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={errors.confirmPassword ? 'error' : ''}
+                  disabled={loading}
+                />
+                {errors.confirmPassword && (
+                  <span className="error-message">{errors.confirmPassword}</span>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="signup-button"
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Create Account'}
+              </button>
+            </form>
+
+            <div className="signup-footer">
+              <p>
+                Already have an account?{' '}
+                <Link to="/login" className="login-link">
+                  Sign in here
+                </Link>
+              </p>
             </div>
           </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={errors.email ? 'error' : ''}
-              placeholder="me@example.com"
-              disabled={loading}
-            />
-            {errors.email && (
-              <span className="error-message">{errors.email}</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className={errors.password ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.password && (
-              <span className="error-message">{errors.password}</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={errors.confirmPassword ? 'error' : ''}
-              disabled={loading}
-            />
-            {errors.confirmPassword && (
-              <span className="error-message">{errors.confirmPassword}</span>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            className="signup-button"
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
-          </button>
-        </form>
-
-        <div className="signup-footer">
-          <p>
-            Already have an account?{' '}
-            <Link to="/login" className="login-link">
-              Sign in here
-            </Link>
-          </p>
         </div>
       </div>
     </div>

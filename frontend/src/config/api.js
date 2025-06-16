@@ -74,6 +74,7 @@ export const API_ENDPOINTS = {
   MINDMAP: `/mindmap/`,
   QUIZ: `/quiz/`,
   QUIZ_SUBMIT: `/quiz/submit/`,
+  QUIZ_EXPLAIN: `/quiz/explain/`,
   
   // Authentication endpoints
   AUTH: {

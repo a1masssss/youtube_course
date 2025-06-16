@@ -5,6 +5,49 @@ from openai import OpenAI
 from .prompts.mindmap_prompt import get_system_prompt
 
 
+def generate_mindmap_from_video(video, user):
+    """
+    Generate mindmap from video transcript, similar to flashcards logic.
+    Returns mindmap data and whether it was newly created.
+    """
+    from ..models import MindMap  # Import here to avoid circular imports
+    
+    # Check if mindmap already exists for this video and user
+    mindmap_obj, created = MindMap.objects.get_or_create(
+        mindmap_video=video,
+        user=user,
+        defaults={'mindmap_json': {}}
+    )
+    
+    # If mindmap already exists and has content, return it
+    if not created and mindmap_obj.mindmap_json:
+        print(f"✅ Found existing mindmap for video: {video.title}")
+        return mindmap_obj.mindmap_json, False
+    
+    # Generate new mindmap if it doesn't exist or is empty
+    print(f"🚀 Generating new mindmap for video: {video.title}")
+    
+    if not video.full_transcript or not video.full_transcript.strip():
+        raise ValueError("No transcript available for this video")
+    
+    try:
+        # Generate mindmap data using the transcript
+        mindmap_data = generate_mindmap_from_transcript(video.full_transcript)
+        
+        # Save the generated mindmap to the database
+        mindmap_obj.mindmap_json = mindmap_data
+        mindmap_obj.save()
+        
+        print(f"✅ Generated and saved mindmap")
+        return mindmap_data, True
+        
+    except Exception as e:
+        # If generation failed, delete the empty mindmap object if it was just created
+        if created:
+            mindmap_obj.delete()
+        raise ValueError(f"Failed to generate mindmap: {e}")
+
+
 def generate_mindmap_from_transcript(transcript):
     """
     Generate a detailed mindmap from video transcript using AI.

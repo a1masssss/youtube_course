@@ -1,3 +1,4 @@
+import os
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.crypto import get_random_string
@@ -6,6 +7,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 import uuid
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 # Function to generate random token
 get_random_token = partial(get_random_string, 100)
 
@@ -69,8 +71,7 @@ class EmailActivation(models.Model):
         """Send a professional activation email to the user."""
         company_name = "Coursiva"
         
-        # Use environment variable or settings for the base URL in production
-        base_url = "http://localhost:3000"  # Change to your production URL
+        base_url = FRONTEND_URL  
         activation_url = f"{base_url}/activate/{self.token}/{self.user.id}"
         
         # Email subject 

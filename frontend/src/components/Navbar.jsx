@@ -87,17 +87,9 @@ const Navbar = () => {
                 onClick={toggleDropdown}
               >
                 <div className="user-avatar">
-                  {user?.picture ? (
-                    <img 
-                      src={user.picture} 
-                      alt="User Avatar" 
-                      className="avatar-image"
-                    />
-                  ) : (
-                    <div className="avatar-letter">
-                      {(user?.first_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-                    </div>
-                  )}
+                  <div className="avatar-letter">
+                    {(user?.first_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </div>
                 </div>
                 <div className={`dropdown-arrow ${dropdownOpen ? 'open' : ''}`}>
                   <svg width="12" height="8" viewBox="0 0 12 8" fill="none">

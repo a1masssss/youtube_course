@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './TranscriptTab.css';
 
-const TranscriptTab = ({ video, isCompact = false }) => {
+const TranscriptTab = ({ video, isCompact = false, externalSearchTerm = '' }) => {
   const [transcriptData, setTranscriptData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredTranscript, setFilteredTranscript] = useState([]);
   const loadedVideoRef = useRef(null);
+
+  // Use external search term if provided, otherwise use internal search term
+  const activeSearchTerm = externalSearchTerm || searchTerm;
 
   useEffect(() => {
     if (video?.timecode_transcript && Array.isArray(video.timecode_transcript)) {
@@ -20,15 +23,15 @@ const TranscriptTab = ({ video, isCompact = false }) => {
   }, [video?.uuid_video, video?.timecode_transcript]);
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
+    if (activeSearchTerm.trim() === '') {
       setFilteredTranscript(transcriptData);
     } else {
       const filtered = transcriptData.filter(segment =>
-        segment.text && segment.text.toLowerCase().includes(searchTerm.toLowerCase())
+        segment.text && segment.text.toLowerCase().includes(activeSearchTerm.toLowerCase())
       );
       setFilteredTranscript(filtered);
     }
-  }, [searchTerm, transcriptData]);
+  }, [activeSearchTerm, transcriptData]);
 
   const formatTime = (seconds) => {
     if (!seconds && seconds !== 0) return '0:00';   
@@ -76,7 +79,6 @@ const TranscriptTab = ({ video, isCompact = false }) => {
       <div className={`transcript-section ${isCompact ? 'transcript-section--compact' : ''}`}>
         <div className="transcript-empty">
           <p className="transcript-empty__message">Transcript with timecodes is not available for this video.</p>
-          <small className="transcript-empty__note">Timecode transcript is generated during video processing.</small>
         </div>
       </div>
     );
@@ -123,7 +125,7 @@ const TranscriptTab = ({ video, isCompact = false }) => {
             className="transcript-search__input"
           />
           <span className="transcript-search__results">
-            {searchTerm && `${filteredTranscript.length} results`}
+            {activeSearchTerm && `${filteredTranscript.length} results`}
           </span>
         </div>
       </div>
@@ -131,7 +133,7 @@ const TranscriptTab = ({ video, isCompact = false }) => {
       <div className="transcript-content">
         {filteredTranscript.length === 0 ? (
           <div className="transcript-no-results">
-            <p className="transcript-no-results__message">No results found for "{searchTerm}"</p>
+            <p className="transcript-no-results__message">No results found for "{activeSearchTerm}"</p>
           </div>
         ) : (
           <div className="transcript-segments">
@@ -156,7 +158,7 @@ const TranscriptTab = ({ video, isCompact = false }) => {
                   <div 
                     className="transcript-segment__text"
                     dangerouslySetInnerHTML={{
-                      __html: highlightSearchTerm(segment.text || '', searchTerm)
+                      __html: highlightSearchTerm(segment.text || '', activeSearchTerm)
                     }}
                   />
                 </div>
