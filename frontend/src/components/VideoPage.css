@@ -3,11 +3,13 @@
   min-height: 100vh;
   background-color: #0A0A1B;
   padding: 1.5rem;
+  
 }
 
 .video-page__container {
-  max-width: 80rem;
+  max-width: 100%;
   margin: 0 auto;
+  padding: 0 2rem;
 }
 
 .video-page__content {
@@ -177,7 +179,7 @@
 }
 
 .transcript-panel__body {
-  height: 20rem;
+  height: 25rem;
   overflow-y: auto;
 }
 

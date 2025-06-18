@@ -131,6 +131,7 @@
   max-width: calc(100% - 48px);
   word-wrap: break-word;
   line-height: 1.6;
+  text-align: left;
 }
 
 .user-message-text {
@@ -148,6 +149,7 @@
   color: rgb(236, 236, 241);
   font-size: 0.95rem;
   line-height: 1.6;
+  text-align: left;
 }
 
 /* Typing Indicator */
@@ -447,7 +449,7 @@
   padding: 4px 8px;
   border-radius: 8px 8px 0 0;
   margin: -4px -4px 8px -4px;
-  text-align: center;
+  text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   animation: slideInDown 0.3s ease-out;

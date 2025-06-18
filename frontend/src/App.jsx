@@ -1,35 +1,39 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import { useUser } from '@clerk/clerk-react';
 import Navbar from './components/Navbar';
 import HomePage from './components/HomePage';
 import MyCoursesPage from './components/MyCoursesPage';
-import PlaylistPage from './components/PlaylistPage';
-import VideoPage from './components/VideoPage';
-import CoursivaBrandPage from './components/CoursivaBrandPage';
-import LoginPage from './components/LoginPage';
-import SignupPage from './components/SignupPage';
+import ClerkLoginPage from './components/ClerkLoginPage';
+import ClerkSignupPage from './components/ClerkSignupPage';
 import LandingPage from './components/LandingPage';
-import OAuthCallback from './components/OAuthCallback';
-import ActivationPage from './components/Auth/ActivationPage';
-import { useAuth } from './context/AuthContext';
+import ClerkDebug from './components/ClerkDebug';
+import TestRegistration from './components/TestRegistration';
+import AuthenticationTest from './components/AuthenticationTest';
 import { Toaster } from 'react-hot-toast';
 import './App.css';
 
-// Component to handle root route based on authentication
+// Simple component to handle root route - always show LandingPage
 const RootRoute = () => {
-  const { isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return <div></div>;
-  }
-  
-  return isAuthenticated ? <HomePage /> : <LandingPage />;
+  return <LandingPage />;
 };
 
-// Main app content that uses AuthContext
-const AppContent = () => {
+// Protected route component for Clerk
+const ProtectedRoute = ({ children }) => {
+  const { isSignedIn, isLoaded } = useUser();
+  
+  if (!isLoaded) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!isSignedIn) {
+    return <ClerkLoginPage />;
+  }
+  
+  return children;
+};
+
+function App() {
   return (
     <Router>
       <div className="App">
@@ -38,48 +42,41 @@ const AppContent = () => {
           <Routes>
             <Route path="/" element={<RootRoute />} />
             <Route path="/landing" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/activate/:token/:userId" element={<ActivationPage />} />
-            <Route path="/auth/callback" element={<OAuthCallback />} />
-            <Route path="/my-courses" element={
-              <ProtectedRoute>
-                <MyCoursesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/coursiva-brand" element={<CoursivaBrandPage />} />
-            <Route path="/:playlistUuid" element={
-              <ProtectedRoute>
-                <PlaylistPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/:playlistUuid/:videoUuid" element={
-              <ProtectedRoute>
-                <VideoPage />
-              </ProtectedRoute>
-            } />
+            <Route path="/login" element={<ClerkLoginPage />} />
+            <Route path="/signup" element={<ClerkSignupPage />} />
+            <Route path="/debug" element={<ClerkDebug />} />
+            <Route path="/test-registration" element={<TestRegistration />} />
+            <Route path="/auth-test" element={<AuthenticationTest />} />
+            <Route 
+              path="/create" 
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/my-courses" 
+              element={
+                <ProtectedRoute>
+                  <MyCoursesPage />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+          }}
+        />
       </div>
     </Router>
-  );
-};
-
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-        }}
-      />
-    </AuthProvider>
   );
 }
 

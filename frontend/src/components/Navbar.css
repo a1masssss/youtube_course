@@ -409,4 +409,32 @@
 
 .user-avatar-section .user-avatar {
   background: #475569 !important;
+}
+
+.auth-btn {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.auth-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.auth-btn.primary {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: white;
+}
+
+.auth-btn.primary:hover {
+  background: white;
+  color: #667eea;
 } 

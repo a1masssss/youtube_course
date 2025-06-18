@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useUser, useClerk, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import './Navbar.css';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated, loading } = useAuth();
+  const { user, isSignedIn, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -15,7 +16,7 @@ const Navbar = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate('/');
     setDropdownOpen(false);
   };
@@ -38,11 +39,6 @@ const Navbar = () => {
     };
   }, []);
 
-  // Don't show navbar on login/signup pages
-  if (location.pathname === '/login' || location.pathname === '/signup') {
-    return null;
-  }
-
   return (
     <nav className="navbar">
       <div className="navbar-container">
@@ -51,7 +47,7 @@ const Navbar = () => {
           {/* Logo/Project Info Section */}
           <div className="navbar-brand">
             <div className="brand-info">
-              <Link to="/landing" className="brand-link">
+              <Link to="/" className="brand-link">
                 <h1 className="brand-title">Coursiva</h1>
               </Link>
             </div>
@@ -61,13 +57,13 @@ const Navbar = () => {
         {/* Right side: Navigation + Authentication Section */}
         <div className="navbar-auth">
           {/* Navigation Links for Authenticated Users */}
-          {isAuthenticated && (
+          {isSignedIn && (
             <div className="navbar-nav">
               <Link 
-                to="/" 
-                className={`nav-link ${isActive('/') ? 'active' : ''}`}
+                to="/create" 
+                className={`nav-link ${isActive('/create') ? 'active' : ''}`}
               >
-                Home
+                Create Course
               </Link>
               <Link 
                 to="/my-courses" 
@@ -78,9 +74,9 @@ const Navbar = () => {
             </div>
           )}
 
-          {loading ? (
-            <div className="auth-loading"></div>
-          ) : isAuthenticated ? (
+          {!isLoaded ? (
+            <div className="auth-loading">Loading...</div>
+          ) : isSignedIn ? (
             <div className="auth-user" ref={dropdownRef}>
               <div 
                 className="user-avatar-section"
@@ -88,7 +84,7 @@ const Navbar = () => {
               >
                 <div className="user-avatar">
                   <div className="avatar-letter">
-                    {(user?.first_name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                    {(user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0] || 'U').toUpperCase()}
                   </div>
                 </div>
                 <div className={`dropdown-arrow ${dropdownOpen ? 'open' : ''}`}>
@@ -101,9 +97,9 @@ const Navbar = () => {
                 <div className="user-dropdown">
                   <div className="user-info">
                     <span className="user-name">
-                      {user?.first_name && user?.last_name 
-                        ? `${user.first_name} ${user.last_name}`
-                        : user?.first_name || user?.email
+                      {user?.firstName && user?.lastName 
+                        ? `${user.firstName} ${user.lastName}`
+                        : user?.firstName || user?.emailAddresses?.[0]?.emailAddress
                       }
                     </span>
                   </div>
@@ -118,12 +114,16 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="auth-buttons">
-              <Link to="/login" className="nav-link">
-                Login
-              </Link>
-              <Link to="/signup" className="nav-link">
-                Sign Up
-              </Link>
+              <SignInButton mode="modal">
+                <button className="nav-link auth-btn">
+                  Login
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="nav-link auth-btn primary">
+                  Sign Up
+                </button>
+              </SignUpButton>
             </div>
           )}
         </div>

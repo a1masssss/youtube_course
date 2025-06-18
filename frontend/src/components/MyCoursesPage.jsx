@@ -1,63 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { Trash2 } from 'lucide-react';
-import { apiClient, API_ENDPOINTS } from '../config/api';
+import { apiCall } from '../utils/auth';
+import { API_ENDPOINTS } from '../config/clerkApi';
 import './MyCoursesPage.css';
 
 const MyCoursesPage = () => {
   const navigate = useNavigate();
+  const { getToken, isSignedIn } = useAuth();
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { playlistId, title }
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    let isMounted = true;
-    
     const fetchPlaylists = async () => {
-      if (!isMounted) return;
+      if (!isSignedIn) return;
       
       try {
-        const response = await apiClient.get(API_ENDPOINTS.MY_COURSES, {
-          signal: abortController.signal
-        });
+        setLoading(true);
+        setError(null);
         
-        if (isMounted) {
-          console.log('📋 Playlists data:', response.data);
-          setPlaylists(response.data);
+        console.log('🔍 Fetching courses...');
+        const response = await apiCall(API_ENDPOINTS.MY_COURSES, {}, getToken);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📋 Курсы загружены:', data);
+          setPlaylists(data);
+        } else {
+          setError('Ошибка загрузки курсов');
         }
       } catch (error) {
-        if (error.name === 'AbortError') {
-          console.log('Playlists fetch aborted');
-          return;
-        }
-        if (isMounted) {
-          console.error('Error fetching playlists:', error);
-          setError('Failed to load courses');
-        }
+        console.error('Ошибка:', error);
+        setError('Не удалось загрузить курсы');
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
     fetchPlaylists();
-    
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, []);
+  }, [getToken, isSignedIn]);
 
   const handlePlaylistClick = (playlistUuid) => {
     navigate(`/${playlistUuid}`);
   };
 
   const handleDeleteClick = (e, playlist) => {
-    e.stopPropagation(); // Prevent card click
+    e.stopPropagation();
     setDeleteConfirmation({
       playlistId: playlist.id,
       title: playlist.title
@@ -69,15 +61,21 @@ const MyCoursesPage = () => {
     
     setDeleting(true);
     try {
-      await apiClient.delete(API_ENDPOINTS.DELETE_COURSE(deleteConfirmation.playlistId));
+      const response = await apiCall(
+        `/my-courses/${deleteConfirmation.playlistId}/delete/`, 
+        { method: 'DELETE' }, 
+        getToken
+      );
       
-      // Remove from local state
-      setPlaylists(prev => prev.filter(p => p.id !== deleteConfirmation.playlistId));
-      
-      console.log('✅ Course deleted successfully');
+      if (response.ok) {
+        setPlaylists(prev => prev.filter(p => p.id !== deleteConfirmation.playlistId));
+        console.log('✅ Курс удален');
+      } else {
+        setError('Ошибка удаления курса');
+      }
     } catch (error) {
-      console.error('❌ Error deleting course:', error);
-      setError('Failed to delete course');
+      console.error('Ошибка удаления:', error);
+      setError('Не удалось удалить курс');
     } finally {
       setDeleting(false);
       setDeleteConfirmation(null);
@@ -89,22 +87,26 @@ const MyCoursesPage = () => {
   };
 
   const getPlaylistThumbnail = (playlist) => {
-    // First try to get playlist thumbnail
     if (playlist.playlist_thumbnail) {
       return playlist.playlist_thumbnail;
     }
-    // Then try to get thumbnail from first video, fallback to placeholder
     if (playlist.videos && playlist.videos.length > 0 && playlist.videos[0].thumbnail) {
       return playlist.videos[0].thumbnail;
     }
     return 'https://via.placeholder.com/320x180?text=Course+Thumbnail';
   };
 
-
   if (loading) {
     return (
       <div className="my-courses-page">
-        {/* Loading silently in background */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '400px' 
+        }}>
+          <div>Loding...</div>
+        </div>
       </div>
     );
   }
@@ -118,7 +120,7 @@ const MyCoursesPage = () => {
             {error}
           </div>
           <button onClick={() => window.location.reload()} className="retry-button">
-            🔄 Try Again
+            🔄 Попробовать снова
           </button>
         </div>
       </div>
@@ -133,79 +135,73 @@ const MyCoursesPage = () => {
 
       {playlists.length === 0 ? (
         <div className="empty-state">
-          <h2>No courses yet</h2>
-          <p>Start by adding a YouTube playlist on the Home page</p>
+          <h2>Пока нет курсов</h2>
+          <p>Добавьте YouTube плейлист на главной странице</p>
           <button 
             onClick={() => navigate('/')} 
             className="add-course-button"
           >
-            ➕ Add Your First Course
+            ➕ Добавить первый курс
           </button>
         </div>
       ) : (
         <div className="courses-grid">
-          {playlists.map((playlist) => {
-
-            return (
-              <div 
-                key={playlist.uuid_playlist} 
-                className="course-card"
-                onClick={() => handlePlaylistClick(playlist.uuid_playlist)}
-              >
-                <div className="course-thumbnail">
-                  <img 
-                    src={getPlaylistThumbnail(playlist)} 
-                    alt={playlist.title}
-                    onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/320x180?text=Course+Thumbnail';
-                    }}
-                  />
-                </div>
-
-                <div className="course-info">
-                  <h3 className="course-title">{playlist.title}</h3>
-                  <button 
-                    className="delete-course-button"
-                    onClick={(e) => handleDeleteClick(e, playlist)}
-                    title="Delete course"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+          {playlists.map((playlist) => (
+            <div 
+              key={playlist.uuid_playlist} 
+              className="course-card"
+              onClick={() => handlePlaylistClick(playlist.uuid_playlist)}
+            >
+              <div className="course-thumbnail">
+                <img 
+                  src={getPlaylistThumbnail(playlist)} 
+                  alt={playlist.title}
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/320x180?text=Course+Thumbnail';
+                  }}
+                />
               </div>
-            );
-          })}
+
+              <div className="course-info">
+                <h3 className="course-title">{playlist.title}</h3>
+                <button 
+                  className="delete-course-button"
+                  onClick={(e) => handleDeleteClick(e, playlist)}
+                  title="Удалить курс"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Модал подтверждения удаления */}
       {deleteConfirmation && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>⚠️ Confirm Deletion</h3>
+              <h3>⚠️ Подтвердить удаление</h3>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to delete this course?</p>
-              <div className="course-to-delete">
-                <strong>"{deleteConfirmation.title}"</strong>
-              </div>
-              <p className="warning-text">This action cannot be undone.</p>
+              <p>Вы уверены, что хотите удалить этот курс?</p>
+              <p className="course-title-preview">"{deleteConfirmation.title}"</p>
             </div>
             <div className="modal-actions">
               <button 
+                onClick={cancelDelete} 
                 className="cancel-button"
-                onClick={cancelDelete}
                 disabled={deleting}
               >
-                Cancel
+                Отмена
               </button>
               <button 
-                className="delete-button"
-                onClick={confirmDelete}
+                onClick={confirmDelete} 
+                className="confirm-button"
                 disabled={deleting}
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deleting ? '🔄 Удаление...' : '🗑️ Удалить'}
               </button>
             </div>
           </div>

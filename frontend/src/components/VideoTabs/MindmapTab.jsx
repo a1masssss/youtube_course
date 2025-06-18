@@ -1,56 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@clerk/clerk-react';
+import { apiCall } from '../../utils/auth';
 import MindMap from '../MindMap';
-import { API_ENDPOINTS } from '../../config/api';
+import { API_ENDPOINTS } from '../../config/clerkApi';
 import './MindmapTab.css';
 
 const MindmapTab = ({ video }) => {
+  const { getToken } = useAuth();
   const [mindmapData, setMindmapData] = useState(null);
   const [mindmapLoading, setMindmapLoading] = useState(false);
   const [mindmapError, setMindmapError] = useState(null);
-
-  // Fetch existing mindmap
-  const fetchMindmap = useCallback(async () => {
-    if (!video?.uuid_video) return;
-    
-    setMindmapLoading(true);
-    setMindmapError(null);
-    
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.MINDMAP}?video_uuid=${video.uuid_video}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          }
-        }
-      );
-
-      if (response.status === 404) {
-        // Mindmap not found - clear data to show generate button
-        setMindmapData(null);
-        return;
-      }
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        if (data.mindmap && Object.keys(data.mindmap).length > 0) {
-          setMindmapData(data.mindmap);
-          console.log('✅ Mindmap loaded successfully:', data);
-        } else {
-          setMindmapData(null);
-        }
-      } else {
-        throw new Error(data.error || 'Failed to load mindmap');
-      }
-    } catch (error) {
-      console.error('❌ Mindmap loading error:', error);
-      setMindmapError(error.message);
-    } finally {
-      setMindmapLoading(false);
-    }
-  }, [video?.uuid_video]);
 
   // Generate new mindmap
   const generateMindmap = useCallback(async () => {
@@ -60,21 +19,15 @@ const MindmapTab = ({ video }) => {
     setMindmapError(null);
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.MINDMAP}`, {
+      const response = await apiCall(API_ENDPOINTS.MINDMAP, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           video_uuid: video.uuid_video
         })
-      });
+      }, getToken);
 
-      const data = await response.json();
-      
       if (response.ok) {
+        const data = await response.json();
         if (data.mindmap && Object.keys(data.mindmap).length > 0) {
           setMindmapData(data.mindmap);
           console.log('✅ Mindmap generated successfully:', data);
@@ -82,7 +35,8 @@ const MindmapTab = ({ video }) => {
           throw new Error('Empty mindmap data received');
         }
       } else {
-        throw new Error(data.error || 'Failed to generate mindmap');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate mindmap');
       }
     } catch (error) {
       console.error('❌ Mindmap generation error:', error);
@@ -90,12 +44,51 @@ const MindmapTab = ({ video }) => {
     } finally {
       setMindmapLoading(false);
     }
-  }, [video?.uuid_video]);
+  }, [video?.uuid_video, getToken]);
+
+  // Retry function for error state
+  const retryLoadMindmap = useCallback(async () => {
+    if (!video?.uuid_video) return;
+    
+    setMindmapLoading(true);
+    setMindmapError(null);
+    
+    try {
+      const response = await apiCall(`${API_ENDPOINTS.MINDMAP}?video_uuid=${video.uuid_video}`, {
+        method: 'GET'
+      }, getToken);
+
+      if (response.status === 404) {
+        setMindmapData(null);
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.mindmap && Object.keys(data.mindmap).length > 0) {
+          setMindmapData(data.mindmap);
+          console.log('✅ Mindmap loaded successfully:', data);
+        } else {
+          setMindmapData(null);
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load mindmap');
+      }
+    } catch (error) {
+      console.error('❌ Mindmap loading error:', error);
+      setMindmapError(error.message);
+    } finally {
+      setMindmapLoading(false);
+    }
+  }, [video?.uuid_video, getToken]);
 
   // Reset state and load mindmap when video changes
   useEffect(() => {
     const videoId = video?.uuid_video;
     if (!videoId) return;
+
+    console.log('🔍 MindmapTab useEffect triggered for video:', videoId);
 
     // Reset state
     setMindmapData(null);
@@ -105,55 +98,44 @@ const MindmapTab = ({ video }) => {
     const abortController = new AbortController();
     let isMounted = true;
     
-    const fetchData = async () => {
+    const loadMindmap = async () => {
       if (!isMounted) return;
       
+      console.log('📥 Starting mindmap fetch for video:', videoId);
       setMindmapLoading(true);
       setMindmapError(null);
       
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(
-          `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.MINDMAP}?video_uuid=${videoId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            signal: abortController.signal
-          }
-        );
+        const response = await apiCall(`${API_ENDPOINTS.MINDMAP}?video_uuid=${videoId}`, {
+          method: 'GET'
+        }, getToken);
 
-        if (abortController.signal.aborted) return;
+        if (abortController.signal.aborted || !isMounted) return;
 
         if (response.status === 404) {
           // Mindmap not found - clear data to show generate button
-          if (isMounted) {
-            setMindmapData(null);
-          }
+          setMindmapData(null);
+          console.log('📭 No mindmap found for video:', videoId);
           return;
         }
 
-        const data = await response.json();
-        
-        if (response.ok && isMounted) {
+        if (response.ok) {
+          const data = await response.json();
           if (data.mindmap && Object.keys(data.mindmap).length > 0) {
             setMindmapData(data.mindmap);
-            console.log('✅ Mindmap loaded successfully:', data);
+            console.log('✅ Mindmap loaded successfully for video:', videoId);
           } else {
             setMindmapData(null);
+            console.log('📭 Empty mindmap data for video:', videoId);
           }
-        } else if (isMounted) {
-          throw new Error(data.error || 'Failed to load mindmap');
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to load mindmap');
         }
       } catch (error) {
-        if (error.name === 'AbortError') {
-          console.log('Mindmap fetch aborted');
-          return;
-        }
-        if (isMounted) {
-          console.error('❌ Mindmap loading error:', error);
-          setMindmapError(error.message);
-        }
+        if (error.name === 'AbortError' || !isMounted) return;
+        console.error('❌ Mindmap loading error:', error);
+        setMindmapError(error.message);
       } finally {
         if (isMounted) {
           setMindmapLoading(false);
@@ -161,14 +143,15 @@ const MindmapTab = ({ video }) => {
       }
     };
 
-    fetchData();
+    loadMindmap();
 
     // Cleanup function
     return () => {
+      console.log('🧹 Cleaning up MindmapTab effect for video:', videoId);
       isMounted = false;
       abortController.abort();
     };
-  }, [video?.uuid_video]); // Only depend on video UUID
+  }, [video?.uuid_video, getToken]);
 
   // Check if video has transcript for mindmap generation
   const hasTranscript = video?.full_transcript && video.full_transcript.trim() !== '';
@@ -200,7 +183,7 @@ const MindmapTab = ({ video }) => {
       <div className="mindmap-section">
         <div className="error-content">
           <p>Error: {mindmapError}</p>
-          <button className="control-button" onClick={fetchMindmap}>
+          <button className="control-button" onClick={retryLoadMindmap}>
             Try Again
           </button>
         </div>

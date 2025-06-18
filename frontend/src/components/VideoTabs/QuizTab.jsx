@@ -1,41 +1,35 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_ENDPOINTS } from '../../config/api';
+import { useAuth } from '@clerk/clerk-react';
+import { apiCall } from '../../utils/auth';
+import { API_ENDPOINTS } from '../../config/clerkApi';
 import './QuizTab.css';
 
 const QuizTab = ({ video, onSwitchToChat }) => {
+  const { getToken } = useAuth();
   // Quiz state
   const [quizData, setQuizData] = useState(null);
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quizError, setQuizError] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [savedResults, setSavedResults] = useState(null);
-  
-  // AI explanation state
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizError, setQuizError] = useState(null);
   const [explanationLoading, setExplanationLoading] = useState({});
 
-  // Ask AI for explanation
-  const askAIExplanation = async (questionIndex, userAnswerIndex) => {
-    if (!video?.uuid_video || !quizData) return;
-    
+  // Get AI explanation for specific question
+  const getQuestionExplanation = async (questionIndex, userAnswerIndex) => {
     setExplanationLoading(prev => ({ ...prev, [questionIndex]: true }));
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ_EXPLAIN}`, {
+      const response = await apiCall(API_ENDPOINTS.QUIZ_EXPLAIN, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           video_uuid: video.uuid_video,
           question_index: questionIndex,
           user_answer_index: userAnswerIndex
         })
-      });
+      }, getToken);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -89,15 +83,9 @@ const QuizTab = ({ video, onSwitchToChat }) => {
     setQuizError(null);
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ}?video_uuid=${video.uuid_video}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          }
-        }
-      );
+      const response = await apiCall(`${API_ENDPOINTS.QUIZ}?video_uuid=${video.uuid_video}`, {
+        method: 'GET'
+      }, getToken);
 
       if (response.status === 404) {
         // Quiz not found - clear data to show generate button
@@ -107,9 +95,8 @@ const QuizTab = ({ video, onSwitchToChat }) => {
         return;
       }
 
-      const data = await response.json();
-      
       if (response.ok) {
+        const data = await response.json();
         setQuizData(data.quiz.quiz_json || []);
         
         // Check if quiz is completed
@@ -133,7 +120,8 @@ const QuizTab = ({ video, onSwitchToChat }) => {
         
         console.log('✅ Quiz loaded successfully:', data);
       } else {
-        throw new Error(data.error || 'Failed to load quiz');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load quiz');
       }
     } catch (error) {
       console.error('❌ Quiz loading error:', error);
@@ -141,7 +129,7 @@ const QuizTab = ({ video, onSwitchToChat }) => {
     } finally {
       setQuizLoading(false);
     }
-  }, [video?.uuid_video]);
+  }, [video?.uuid_video, getToken]);
 
   // Generate new quiz
   const generateQuiz = useCallback(async () => {
@@ -151,21 +139,15 @@ const QuizTab = ({ video, onSwitchToChat }) => {
     setQuizError(null);
     
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ}`, {
+      const response = await apiCall(API_ENDPOINTS.QUIZ, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           video_uuid: video.uuid_video
         })
-      });
+      }, getToken);
 
-      const data = await response.json();
-      
       if (response.ok) {
+        const data = await response.json();
         setQuizData(data.quiz.quiz_json || []);
         setCurrentQuestionIndex(0);
         setSelectedAnswers({});
@@ -174,7 +156,8 @@ const QuizTab = ({ video, onSwitchToChat }) => {
         setSavedResults(null);
         console.log('✅ Quiz generated successfully:', data);
       } else {
-        throw new Error(data.error || 'Failed to generate quiz');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate quiz');
       }
     } catch (error) {
       console.error('❌ Quiz generation error:', error);
@@ -182,46 +165,40 @@ const QuizTab = ({ video, onSwitchToChat }) => {
     } finally {
       setQuizLoading(false);
     }
-  }, [video?.uuid_video]);
+  }, [video?.uuid_video, getToken]);
 
   // Submit quiz results
   const submitQuizResults = useCallback(async (answers) => {
     if (!video?.uuid_video || !answers) return;
     
     try {
-      const token = localStorage.getItem('access_token');
-      
       // Convert answers object to array
       const userAnswersArray = [];
       for (let i = 0; i < quizData.length; i++) {
         userAnswersArray.push(answers[i] !== undefined ? answers[i] : -1);
       }
       
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ_SUBMIT}`, {
+      const response = await apiCall(API_ENDPOINTS.QUIZ_SUBMIT, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           video_uuid: video.uuid_video,
           user_answers: userAnswersArray
         })
-      });
+      }, getToken);
 
-      const data = await response.json();
-      
       if (response.ok) {
+        const data = await response.json();
         setQuizCompleted(true);
         setSavedResults(data.results);
         console.log('✅ Quiz results saved successfully:', data);
       } else {
-        console.error('❌ Failed to save quiz results:', data.error);
+        const errorData = await response.json();
+        console.error('❌ Failed to save quiz results:', errorData.error);
       }
     } catch (error) {
       console.error('❌ Error submitting quiz results:', error);
     }
-  }, [video?.uuid_video, quizData]);
+  }, [video?.uuid_video, quizData, getToken]);
 
   // Reset state and load quiz when video changes
   useEffect(() => {
@@ -247,16 +224,9 @@ const QuizTab = ({ video, onSwitchToChat }) => {
       setQuizError(null);
       
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(
-          `${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.QUIZ}?video_uuid=${videoId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            signal: abortController.signal
-          }
-        );
+        const response = await apiCall(`${API_ENDPOINTS.QUIZ}?video_uuid=${videoId}`, {
+          method: 'GET'
+        }, getToken);
 
         if (abortController.signal.aborted) return;
 
@@ -270,9 +240,8 @@ const QuizTab = ({ video, onSwitchToChat }) => {
           return;
         }
 
-        const data = await response.json();
-        
         if (response.ok && isMounted) {
+          const data = await response.json();
           setQuizData(data.quiz.quiz_json || []);
           
           // Check if quiz is completed
@@ -296,7 +265,8 @@ const QuizTab = ({ video, onSwitchToChat }) => {
           
           console.log('✅ Quiz loaded successfully:', data);
         } else if (isMounted) {
-          throw new Error(data.error || 'Failed to load quiz');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to load quiz');
         }
       } catch (error) {
         if (error.name === 'AbortError') {
@@ -321,7 +291,7 @@ const QuizTab = ({ video, onSwitchToChat }) => {
       isMounted = false;
       abortController.abort();
     };
-  }, [video?.uuid_video]); // Only depend on video UUID
+  }, [video?.uuid_video, getToken]);
 
   if (quizLoading) {
     return (
@@ -458,7 +428,7 @@ const QuizTab = ({ video, onSwitchToChat }) => {
                 <div className="ask-ai-container">
                   <button
                     className="ask-ai-button"
-                    onClick={() => askAIExplanation(index, selectedAnswers[index])}
+                    onClick={() => getQuestionExplanation(index, selectedAnswers[index])}
                     disabled={explanationLoading[index]}
                   >
                     {explanationLoading[index] ? (

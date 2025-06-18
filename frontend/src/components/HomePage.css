@@ -1,8 +1,161 @@
 .home-page {
   min-height: 100vh;
-  background: #0A0A1B;
-  position: relative;
-  overflow-x: hidden;
+  color: white;
+}
+
+.home-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.welcome-section {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.welcome-section h1 {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.welcome-section p {
+  font-size: 1.3rem;
+  opacity: 0.9;
+}
+
+/* Стили для формы создания курса */
+.create-course-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 30px;
+  margin: 20px 0;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 600px;
+}
+
+.create-course-section h2 {
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.playlist-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-input {
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.playlist-input:focus {
+  outline: none;
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.playlist-input:disabled {
+  background: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.create-button {
+  padding: 15px 30px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.create-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(45deg, #ff5252, #d84315);
+}
+
+.create-button:disabled {
+  background: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.message {
+  text-align: center;
+  padding: 15px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-top: 20px;
+  animation: slideIn 0.3s ease;
+}
+
+.message.success {
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #4CAF50;
+}
+
+.message.error {
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #f44336;
+}
+
+
+
+
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .welcome-section h1 {
+    font-size: 2.5rem;
+  }
+  
+  .create-course-section {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .home-content {
+    padding: 20px 10px;
+  }
 }
 
 .home-page::before {
@@ -39,8 +192,6 @@
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
-
-
 
 /* Main Content */
 .main-content {
@@ -215,10 +366,6 @@
   margin-top: 40px;
 }
 
-
-
-
-
 .feature-icon {
   width: 60px;
   height: 60px;
@@ -235,7 +382,6 @@
   width: 28px;
   height: 28px;
 }
-
 
 /* Animations */
 @keyframes fadeInUp {
@@ -297,8 +443,6 @@
     font-weight: 700;
     line-height: 1.1;
   }
-  
-
   
   .form-container {
     padding: 30px 25px;

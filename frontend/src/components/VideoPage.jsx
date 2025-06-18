@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS } from '../config/api';
+import { useAuth } from '@clerk/clerk-react';
+import { apiCall } from '../utils/auth';
+import { API_ENDPOINTS } from '../config/clerkApi';
 import './VideoPage.css';
 import { SummaryTab, QuizTab, ChatTab, FlashcardsTab, MindmapTab, TranscriptTab } from './VideoTabs';
 
 const VideoPage = () => {
   const { playlistUuid, videoUuid } = useParams();
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   
   // Video state
   const [video, setVideo] = useState(null);
@@ -38,56 +41,56 @@ const VideoPage = () => {
 
   // Load video data
   useEffect(() => {
-    let isMounted = true;
-    let abortController = new AbortController();
+    if (!videoUuid) return;
 
-    const loadVideo = async () => {
-      if (!videoUuid) return;
-      
-      setLoading(true);
-      setError(null);
-      
+    // Create AbortController for this effect
+    const abortController = new AbortController();
+    
+    const fetchVideo = async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}${API_ENDPOINTS.video(videoUuid)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+        setLoading(true);
+        setError(null);
+        
+        console.log('🔍 Fetching video:', videoUuid);
+        const response = await apiCall(API_ENDPOINTS.video(videoUuid), {
+          method: 'GET',
           signal: abortController.signal
-        });
+        }, getToken);
 
-        if (!isMounted) return;
+        // Check if request was aborted
+        if (abortController.signal.aborted) {
+          console.log('🚫 Request was aborted for video:', videoUuid);
+          return;
+        }
 
         if (response.ok) {
           const data = await response.json();
           setVideo(data);
-          console.log('Video loaded:', data);
+          console.log('✅ Video loaded:', data);
         } else {
-          setError('Failed to load video');
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to load video');
         }
       } catch (error) {
         if (error.name === 'AbortError') {
-          console.log('Request was aborted');
+          console.log('🚫 Fetch was aborted for video:', videoUuid);
           return;
         }
-        if (isMounted) {
-          console.error('Error loading video:', error);
-          setError(error.message);
-        }
+        console.error('❌ Error loading video:', error);
+        setError(error.message);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
-    loadVideo();
+    fetchVideo();
 
+    // Cleanup function to abort the request if component unmounts or dependencies change
     return () => {
-      isMounted = false;
+      console.log('🧹 Cleanup: Aborting request for video:', videoUuid);
       abortController.abort();
     };
-  }, [videoUuid]);
+  }, [videoUuid, getToken]);
 
   if (loading) {
     return (
@@ -106,16 +109,6 @@ const VideoPage = () => {
         <div className="error-container">
           <div className="error-message">Error: {error}</div>
           <button onClick={() => window.location.reload()}>Try Again</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!video) {
-    return (
-      <div className="video-page video-page--not-found">
-        <div className="not-found-container">
-          <div className="not-found-message">Video not found</div>
         </div>
       </div>
     );

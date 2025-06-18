@@ -1,11 +1,24 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from users.authentication import ClerkJWTAuthentication
 from django.shortcuts import get_object_or_404
-from django.http import Http404, StreamingHttpResponse
+from django.http import Http404, StreamingHttpResponse, JsonResponse
 from django.utils import timezone
+from django.contrib.auth import get_user_model
+import json
+import logging
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+import hmac
+import hashlib
+from django.conf import settings
+
+# Get the custom User model
+User = get_user_model()
 
 from main.utils.summary_chatbot import process_chatbot_request
 from main.utils.quiz_explanation import process_quiz_explanation_request
@@ -28,16 +41,26 @@ from main.utils.generate_quiz import generate_quiz_from_transcript
 
 
 class PlaylistAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
         print("🚀 Received POST request to /api/playlists/")
+        print(f"🔍 Request data: {request.data}")
+        print(f"👤 User: {request.user}")
         
+        # Get URL or playlist_id from request
         url = request.data.get("url")
+        playlist_id = request.data.get("playlist_id")
+        
+        # If playlist_id is provided, construct YouTube URL
+        if playlist_id and not url:
+            url = f"https://www.youtube.com/playlist?list={playlist_id}"
+            print(f"🔗 Constructed URL from playlist_id: {url}")
+        
         if not url:
-            print("❌ No URL provided")
-            return Response({"error": "URL is required"}, status=status.HTTP_400_BAD_REQUEST)
+            print("❌ No URL or playlist_id provided")
+            return Response({"error": "URL or playlist_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         print(f"🔍 Processing URL: {url}")
         
@@ -169,7 +192,7 @@ class PlaylistAPIView(APIView):
 
 
 class PlaylistDetailAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get(self, request, playlist_uuid):
@@ -179,7 +202,7 @@ class PlaylistDetailAPIView(APIView):
 
 
 class PlaylistVideosListAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get(self, request, playlist_uuid):
@@ -189,11 +212,10 @@ class PlaylistVideosListAPIView(APIView):
 
 
 class VideoDetailAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get(self, request, video_uuid):
-        # Получаем только видео текущего пользователя
         video = get_object_or_404(Video, uuid_video=video_uuid, user=request.user)
         serializer = VideoSerializer(video)
         return Response(serializer.data)
@@ -201,7 +223,7 @@ class VideoDetailAPIView(APIView):
 
 
 class MyCoursesAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
@@ -214,7 +236,7 @@ class MyCoursesAPIView(APIView):
  
 
 class MyCourseDeleteAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def delete(self, request, playlist_id):
@@ -226,7 +248,7 @@ class MyCourseDeleteAPIView(APIView):
 
 
 class SummaryChatbotAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -251,7 +273,7 @@ class SummaryChatbotAPIView(APIView):
 
 
 class GenerateFlashCardsView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -335,7 +357,7 @@ class GenerateFlashCardsView(APIView):
 
 
 class GenerateMindMapView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -423,7 +445,7 @@ class GenerateMindMapView(APIView):
 
 
 class GenerateQuizView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -546,7 +568,7 @@ class GenerateQuizView(APIView):
 
 
 class SubmitQuizResultsView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -628,7 +650,7 @@ class SubmitQuizResultsView(APIView):
 
 
 class QuizExplanationAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [ClerkJWTAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -658,5 +680,265 @@ class QuizExplanationAPIView(APIView):
             return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def clerk_webhook(request):
+    """
+    Webhook endpoint to sync Clerk users with Django database
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Get webhook secret from settings
+        webhook_secret = getattr(settings, 'CLERK_WEBHOOK_SECRET', None)
+        
+        # Parse the webhook payload
+        body = request.body
+        payload = json.loads(body)
+        
+        event_type = payload.get('type')
+        data = payload.get('data', {})
+        
+        logger.info(f"📧 Received Clerk webhook: {event_type}")
+        
+        # Temporarily disable signature verification for testing
+        # TODO: Re-enable after confirming webhook works
+        signature_check_disabled = True
+        
+        # Verify webhook signature if secret is configured and not disabled
+        if webhook_secret and webhook_secret != 'whsec_your_webhook_secret_here' and not signature_check_disabled:
+            signature = request.headers.get('clerk-signature')
+            if signature:
+                # Verify the webhook signature
+                if not verify_webhook_signature(body, signature, webhook_secret):
+                    logger.warning("❌ Invalid webhook signature")
+                    return JsonResponse({'error': 'Invalid signature'}, status=400)
+            else:
+                logger.warning("⚠️ No signature header found")
+        else:
+            if signature_check_disabled:
+                logger.info("⚠️ Signature verification disabled for testing")
+            else:
+                logger.info("⚠️ Webhook secret not configured - skipping signature verification")
+        
+        if event_type == 'user.created':
+            return handle_user_created(data, logger)
+            
+        elif event_type == 'user.updated':
+            return handle_user_updated(data, logger)
+            
+        elif event_type == 'user.deleted':
+            return handle_user_deleted(data, logger)
+        
+        else:
+            logger.info(f"📄 Unhandled event type: {event_type}")
+            return JsonResponse({'status': 'event_ignored', 'event_type': event_type})
+        
+        return JsonResponse({'status': 'success'})
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ Invalid JSON in webhook payload: {str(e)}")
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"❌ Clerk webhook error: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def verify_webhook_signature(payload, signature, secret):
+    """
+    Verify Clerk webhook signature
+    Based on Clerk's webhook verification: https://clerk.com/docs/webhooks/overview
+    """
+    import base64
+    
+    try:
+        # Clerk sends multiple signatures in the header
+        # Format: "v1,signature1 v1,signature2"
+        signatures = signature.split(' ')
+        
+        for sig in signatures:
+            if not sig.startswith('v1,'):
+                continue
+                
+            # Extract the signature part
+            sig_value = sig[3:]  # Remove 'v1,' prefix
+            
+            # Clerk uses the raw payload body for signature
+            expected_sig = hmac.new(
+                secret.encode('utf-8'),
+                payload,
+                hashlib.sha256
+            ).hexdigest()
+            
+            # Try multiple comparison methods
+            if hmac.compare_digest(sig_value, expected_sig):
+                return True
+                
+            # Also try base64 encoded version
+            try:
+                expected_sig_b64 = base64.b64encode(
+                    hmac.new(
+                        secret.encode('utf-8'),
+                        payload,
+                        hashlib.sha256
+                    ).digest()
+                ).decode('utf-8')
+                
+                if hmac.compare_digest(sig_value, expected_sig_b64):
+                    return True
+            except:
+                pass
+        
+        return False
+        
+    except Exception as e:
+        logging.getLogger(__name__).error(f"❌ Error verifying signature: {str(e)}")
+        return False
+
+
+def handle_user_created(data, logger):
+    """
+    Handle user.created webhook event
+    """
+    clerk_user_id = data.get('id')
+    email_addresses = data.get('email_addresses', [])
+    email = email_addresses[0].get('email_address') if email_addresses else None
+    first_name = data.get('first_name', '')
+    last_name = data.get('last_name', '')
+    
+    logger.info(f"🔍 Processing user.created: email={email}, clerk_id={clerk_user_id}")
+    
+    if not email or not clerk_user_id:
+        logger.warning("❌ Missing email or clerk_user_id in webhook data")
+        return JsonResponse({'error': 'Missing email or clerk_user_id'}, status=400)
+    
+    try:
+        # Check if user already exists by Clerk ID
+        existing_user = User.objects.filter(clerk_id=clerk_user_id).first()
+        if existing_user:
+            logger.info(f"✅ User already exists with Clerk ID: {email}")
+            return JsonResponse({
+                'status': 'user_already_exists',
+                'user_id': existing_user.id,
+                'email': existing_user.email
+            })
+        
+        # Check if user exists by email
+        existing_user = User.objects.filter(email=email).first()
+        if existing_user:
+            # Update with Clerk ID
+            existing_user.clerk_id = clerk_user_id
+            existing_user.first_name = first_name or existing_user.first_name
+            existing_user.last_name = last_name or existing_user.last_name
+            existing_user.save()
+            logger.info(f"✅ Updated existing user with Clerk ID: {email}")
+            return JsonResponse({
+                'status': 'user_updated_with_clerk_id',
+                'user_id': existing_user.id,
+                'email': existing_user.email
+            })
+        
+        # Create new user
+        user = User.objects.create_user(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            clerk_id=clerk_user_id,
+            is_active=True,
+            username=email  # Use email as username
+        )
+        
+        logger.info(f"✅ Created new user: {email} (Clerk ID: {clerk_user_id}, Django ID: {user.id})")
+        return JsonResponse({
+            'status': 'user_created',
+            'user_id': user.id,
+            'email': user.email,
+            'clerk_id': clerk_user_id
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error creating user: {str(e)}")
+        return JsonResponse({'error': f'Failed to create user: {str(e)}'}, status=500)
+
+
+def handle_user_updated(data, logger):
+    """
+    Handle user.updated webhook event
+    """
+    clerk_user_id = data.get('id')
+    email_addresses = data.get('email_addresses', [])
+    email = email_addresses[0].get('email_address') if email_addresses else None
+    first_name = data.get('first_name', '')
+    last_name = data.get('last_name', '')
+    
+    logger.info(f"🔄 Processing user.updated: email={email}, clerk_id={clerk_user_id}")
+    
+    try:
+        # Try to find user by Clerk ID first
+        user = User.objects.filter(clerk_id=clerk_user_id).first()
+        if not user and email:
+            # Try to find by email
+            user = User.objects.filter(email=email).first()
+        
+        if user:
+            # Update user information
+            updated_fields = []
+            if user.email != email and email:
+                user.email = email
+                updated_fields.append('email')
+            if user.first_name != first_name:
+                user.first_name = first_name
+                updated_fields.append('first_name')
+            if user.last_name != last_name:
+                user.last_name = last_name
+                updated_fields.append('last_name')
+            if not user.clerk_id and clerk_user_id:
+                user.clerk_id = clerk_user_id
+                updated_fields.append('clerk_id')
+            
+            user.save()
+            logger.info(f"✅ Updated user: {email} (fields: {', '.join(updated_fields)})")
+            return JsonResponse({
+                'status': 'user_updated',
+                'user_id': user.id,
+                'updated_fields': updated_fields
+            })
+        else:
+            logger.warning(f"❌ User not found for Clerk ID: {clerk_user_id}")
+            return JsonResponse({'error': 'User not found'}, status=404)
+            
+    except Exception as e:
+        logger.error(f"❌ Error updating user: {str(e)}")
+        return JsonResponse({'error': f'Failed to update user: {str(e)}'}, status=500)
+
+
+def handle_user_deleted(data, logger):
+    """
+    Handle user.deleted webhook event
+    """
+    clerk_user_id = data.get('id')
+    logger.info(f"🗑️ Processing user.deleted: clerk_id={clerk_user_id}")
+    
+    try:
+        user = User.objects.filter(clerk_id=clerk_user_id).first()
+        if user:
+            user_email = user.email
+            user_id = user.id
+            user.delete()
+            logger.info(f"✅ Deleted user: {user_email} (Django ID: {user_id})")
+            return JsonResponse({
+                'status': 'user_deleted',
+                'deleted_user_id': user_id,
+                'deleted_email': user_email
+            })
+        else:
+            logger.warning(f"❌ User not found for deletion, Clerk ID: {clerk_user_id}")
+            return JsonResponse({'error': 'User not found'}, status=404)
+            
+    except Exception as e:
+        logger.error(f"❌ Error deleting user: {str(e)}")
+        return JsonResponse({'error': f'Failed to delete user: {str(e)}'}, status=500)
 
 

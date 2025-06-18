@@ -1,47 +1,73 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient, API_ENDPOINTS } from '../config/api';
+import { useAuth } from '@clerk/clerk-react';
+import { apiCall } from '../utils/auth';
+import { API_ENDPOINTS } from '../config/clerkApi';
 import VideoCard from './VideoCard';
 import './PlaylistPage.css';
 
 const PlaylistPage = () => {
-  const { playlistUuid } = useParams();
+  const { uuid } = useParams();
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    const fetchPlaylist = async () => {
-      if (fetchingRef.current) {
-        console.log('Playlist fetch already in progress, skipping...');
-        return;
-      }
-      
-      fetchingRef.current = true;
-      
+    if (!uuid) return;
+
+    // Create AbortController for this effect
+    const abortController = new AbortController();
+
+    const fetchPlaylistVideos = async () => {
       try {
-        // Use lightweight endpoint for faster loading
-        const response = await apiClient.get(API_ENDPOINTS.getPlaylistVideosList(playlistUuid));
-        console.log('📋 Lightweight playlist data loaded:', response.data);
-        setPlaylist(response.data);
+        setLoading(true);
+        setError(null);
+        
+        console.log('🔍 Fetching playlist videos for UUID:', uuid);
+        const response = await apiCall(API_ENDPOINTS.getPlaylistVideosList(uuid), {
+          method: 'GET',
+          signal: abortController.signal
+        }, getToken);
+
+        // Check if request was aborted
+        if (abortController.signal.aborted) {
+          console.log('🚫 Request was aborted for playlist:', uuid);
+          return;
+        }
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Playlist videos loaded:', data);
+          setPlaylist(data);
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to load playlist');
+        }
       } catch (error) {
-        console.error('Error fetching playlist:', error);
+        if (error.name === 'AbortError') {
+          console.log('🚫 Fetch was aborted for playlist:', uuid);
+          return;
+        }
+        console.error('❌ Error fetching playlist:', error);
         setError('Failed to load playlist');
       } finally {
         setLoading(false);
-        fetchingRef.current = false;
       }
     };
 
-    if (playlistUuid) {
-      fetchPlaylist();
-    }
-  }, [playlistUuid]);
+    fetchPlaylistVideos();
+
+    // Cleanup function to abort the request if component unmounts or dependencies change
+    return () => {
+      console.log('🧹 Cleanup: Aborting request for playlist:', uuid);
+      abortController.abort();
+    };
+  }, [uuid, getToken]);
 
   const handleVideoClick = (videoUuid) => {
-    navigate(`/${playlistUuid}/${videoUuid}`);
+    navigate(`/${uuid}/${videoUuid}`);
   };
 
   if (loading) {
@@ -76,13 +102,7 @@ const PlaylistPage = () => {
             onClick={() => handleVideoClick(video.uuid_video)}
           />
         ))}
-      </div>
-
-      {(!playlist?.videos || playlist.videos.length === 0) && (
-        <div className="no-videos">
-          <p>No videos found in this playlist.</p>
-        </div>
-      )}
+      </div>  
     </div>
   );
 };

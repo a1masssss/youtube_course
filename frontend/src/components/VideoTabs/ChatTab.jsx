@@ -4,9 +4,12 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useAuth } from '@clerk/clerk-react';
+import { apiCall } from '../../utils/auth';
 import './ChatTab.css';
 
 const ChatTab = ({ video, presetMessage }) => {
+  const { getToken } = useAuth();
   // Chat state
   const [chatMessages, setChatMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
@@ -43,6 +46,13 @@ const ChatTab = ({ video, presetMessage }) => {
     }
   }, [chatMessages, chatLoading]);
 
+  // Set preset message when provided
+  useEffect(() => {
+    if (presetMessage) {
+      setCurrentMessage(presetMessage);
+    }
+  }, [presetMessage]);
+
   // Send message to chatbot with streaming
   const sendChatMessage = async () => {
     if (!currentMessage.trim() || chatLoading || !video) return;
@@ -71,19 +81,13 @@ const ChatTab = ({ video, presetMessage }) => {
     setChatMessages(prev => [...prev, botMessage]);
 
     try {
-      const token = localStorage.getItem('access_token');
-      
-      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/summary-chatbot/`, {
+      const response = await apiCall('/summary-chatbot/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           video_uuid: video.uuid_video,
           user_message: userMessage
         })
-      });
+      }, getToken);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -315,9 +319,6 @@ const ChatTab = ({ video, presetMessage }) => {
                 
                 {chatLoading && (
                   <div className="message bot">
-                    <div className="message-avatar">
-                      <div className="bot-avatar">🤖</div>
-                    </div>
                     <div className="message-content">
                       <div className="typing-indicator">
                         <div className="typing-dot"></div>
